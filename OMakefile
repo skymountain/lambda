@@ -1,0 +1,9 @@
+clean:
+	rm *.omc
+	.SUBDIRS: ./src
+
+.DEFAULT:
+	.SUBDIRS: ./src
+
+
+
