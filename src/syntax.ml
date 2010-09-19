@@ -7,14 +7,13 @@ type binop =
       
 type typ =
     IntT
-  | VarT of id
   | FunT of typ * typ
       
 type exp =
     Var     of id
   | IntLit  of int
   | BinOp   of binop * exp * exp
-  | Fun     of id * exp
+  | Fun     of id * typ * exp
   | App     of exp * exp
   | Let     of id * exp * exp
       

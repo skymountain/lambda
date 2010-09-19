@@ -3,9 +3,12 @@
   open Parser
 
   exception Lexical_error of string
+  let err s = raise (Lexical_error ("Error: " ^ s))
+    
   let reserv_words = [
     ("let", Parser.LET);
     ("in", Parser.IN);
+    ("int", Parser.INT);
   ]
 }
 
@@ -23,12 +26,20 @@ rule main = parse
 | ')'    { Parser.RPAREN }
 | '.'    { Parser.DOT }
 | '='    { Parser.EQ }
+| ':'    { Parser.COLON }
+| "->"   { Parser.RARROW }
 | ";;"   { Parser.SEMICOLON2 }
-| "-"? [ '0'-'9' ]+ { Parser.INTLIT (int_of_string @< Lexing.lexeme lexbuf) }
-| ident_top ident_bdy*
-      { let s = Lexing.lexeme lexbuf in
-        try List.assoc s reserv_words with
-          Not_found -> IDENT s
+| "-"? [ '0'-'9' ]+
+      {
+        let s = Lexing.lexeme lexbuf in
+        try Parser.INTLIT (int_of_string s) with
+          Failure _ -> err @< Printf.sprintf "%s exceeds the range of integer" s
       }
+| ident_top ident_bdy*
+         {
+           let s = Lexing.lexeme lexbuf in
+           try List.assoc s reserv_words with
+             Not_found -> IDENT s
+         }
 | eof    { EOF }
-| _     { raise (Lexical_error (Printf.sprintf "unknown token: %s" @< Lexing.lexeme lexbuf)) }
+| _      { err (Printf.sprintf "unknown token: %s" @< Lexing.lexeme lexbuf) }

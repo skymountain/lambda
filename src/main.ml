@@ -5,26 +5,32 @@ exception Exit
 let err s = print_endline s 
 let p_msg s = print_endline s
   
-let rec read_eval_print prompt fun_lexbuf env err =
+let rec read_eval_print prompt fun_lexbuf tenv env err =
   print_string prompt;
   flush stdout;
   try 
     let prog = Parser.main Lexer.main @< Lexing.from_function fun_lexbuf in
-    match Eval.eval env prog with
-      None -> env
-    | Some (newenv, id ,v) ->
-        let newenv = Env.extend newenv id v in
+    match prog with
+      Syntax.EOF -> (tenv, env)
+    | _   -> begin
+        let (newtenv, id_typ, typ) = Typing.typing tenv prog in
+        let (newenv, id ,v) = Eval.eval env prog in
+        assert (id_typ = id);
         print_string @< "val "^id;
+        print_string " : ";
+        Typing.pp_typ typ;
         print_string " = ";
         Eval.pp_val v;
         print_newline ();
-        read_eval_print prompt fun_lexbuf newenv err
+        read_eval_print prompt fun_lexbuf newtenv newenv err
+      end
   with
-    e -> let f s = err s; read_eval_print prompt fun_lexbuf env err in
+    e -> let f s = err s; read_eval_print prompt fun_lexbuf tenv env err in
     (match e with
        Parsing.Parse_error   -> f "Syntax error" 
      | Lexer.Lexical_error s -> f s
      | Eval.Eval_error s     -> f s
+     | Typing.Typing_error s -> f s
      | _ -> raise e)
 
 let refill_buffer ch =
@@ -44,6 +50,7 @@ let refill_buffer ch =
   body
 
 let init_env = Env.extend (Env.extend Env.empty "i" @< Eval.IntV 1) "ii" @< Eval.IntV 2
+let init_tenv = Env.empty
   
 let main () =
   let files = ref [] in
@@ -63,13 +70,13 @@ let main () =
   in
   let ins = List.append files @< if interact then [(stdin, (fun s -> err s), None, "> ")] else [] in
   List.fold_left
-    (fun env (ichann, err, file, prompt) ->
+    (fun (tenv, env) (ichann, err, file, prompt) ->
        (* print file name *)
        (match file with
           None -> ()
-        | Some file -> p_msg @< Printf.sprintf "will load: %s" file);
-       read_eval_print prompt (refill_buffer ichann) env err)
-    init_env
+        | Some file -> p_msg @< Printf.sprintf "will load %s" file);
+       read_eval_print prompt (refill_buffer ichann) tenv env err)
+    (init_tenv, init_env)
     ins
 
 let _ = try ignore @< main () with Exit -> ();
