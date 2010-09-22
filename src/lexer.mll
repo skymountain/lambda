@@ -9,6 +9,12 @@
     ("let", Parser.LET);
     ("in", Parser.IN);
     ("int", Parser.INT);
+    ("bool", Parser.BOOL);
+    ("true", Parser.TRUE);
+    ("false", Parser.FALSE);
+    ("if", Parser.IF);
+    ("then", Parser.THEN);
+    ("else", Parser.ELSE);
   ]
 }
 
