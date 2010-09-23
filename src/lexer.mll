@@ -15,6 +15,7 @@
     ("if", Parser.IF);
     ("then", Parser.THEN);
     ("else", Parser.ELSE);
+    ("rec", Parser.REC);
   ]
 }
 
@@ -26,6 +27,7 @@ rule main = parse
   blank+ { main lexbuf }
 | '\\'   { Parser.BACKSLA }
 | '+'    { Parser.PLUS }
+| '-'    { Parser.MINUS }
 | '*'    { Parser.ASTER }
 | '/'    { Parser.SLASH }
 | '('    { Parser.LPAREN }

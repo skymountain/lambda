@@ -39,20 +39,14 @@ let rec eq_typ typ1 typ2 =
   | BoolT, BoolT -> true
   | _ -> false
 
-(* typing for binary operator *)
-let str_of_binop = function
-    Plus  -> "+"
-  | Mult  -> "*"
-  | Div   -> "/"
-  | Equal -> "="
-      
+(* typing for binary operator *)      
 let typ_binop typ1 typ2 = function
-    (Plus | Mult | Div) as op ->
+    (Plus | Minus | Mult | Div) as op ->
       if typ1 = IntT && typ2 = IntT then IntT
       else err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
-  | Equal ->
+  | Eq ->
       if eq_typ typ1 typ2 then BoolT
-      else err @< Printf.sprintf "both arguments of %s must be same types" @< str_of_binop Equal
+      else err @< Printf.sprintf "both arguments of %s must be same types" @< str_of_binop Eq
         
 (* typing for exp *)
 let rec typ_exp tenv = function
@@ -63,8 +57,8 @@ let rec typ_exp tenv = function
     end
   | IntLit _  -> IntT
   | BoolLit _ -> BoolT
-  | BinOp (op, e1, e2)  ->
-      let typ1, typ2 = typ_exp tenv e1, typ_exp tenv e2 in
+  | BinOp (op, exp1, exp2)  ->
+      let typ1, typ2 = typ_exp tenv exp1, typ_exp tenv exp2 in
       typ_binop typ1 typ2 op
   | IfExp (cond, then_exp, else_exp) -> begin
       match typ_exp tenv cond with
@@ -78,22 +72,36 @@ let rec typ_exp tenv = function
     end
   | Fun (var, typ, body) ->
       FunT (typ, typ_exp (Env.extend tenv var typ) body)
-  | App (e1, e2) -> begin
-      match typ_exp tenv e1 with
+  | App (exp1, exp2) -> begin
+      match typ_exp tenv exp1 with
         FunT (arg_typ, ret_typ) ->
-          if eq_typ arg_typ @< typ_exp tenv e2 then ret_typ
+          if eq_typ arg_typ @< typ_exp tenv exp2 then ret_typ
           else err "type of actual argument must correspond with one of formal argument"
       | _ -> err "only function type can be applied"
     end
-  | Let (var, e, body) ->
-      typ_exp (Env.extend tenv var @< typ_exp tenv e) body
-
+  | Let (var, exp, body) ->
+      typ_exp (Env.extend tenv var @< typ_exp tenv exp) body
+  | LetRec (var, typ, exp, body) ->
+      typ_exp (Env.extend tenv var @< typ_letrec tenv var typ exp) body
+        
+(* typing for let-rec *)
+and typ_letrec tenv var typ exp =
+  match exp, typ with
+    Fun _, FunT _ -> begin
+      let tenv' = (Env.extend tenv var typ) in
+      let etyp = typ_exp tenv' exp in
+      if eq_typ typ etyp then etyp
+      else err "expression's type doesn't cossrespond with the specified type"
+    end
+  | _    -> err "only values which are functions can be defined recursively"
+    
 (* typing for program *)
 let typing tenv =
   let return tenv var typ =
     Env.extend tenv var typ, var, typ
   in
   function
-    Exp e -> return tenv "it" @< typ_exp tenv e
-  | Decl (var, e) -> return tenv var @< typ_exp tenv e
+    Exp exp -> return tenv "it" @< typ_exp tenv exp
+  | Decl (var, exp) -> return tenv var @< typ_exp tenv exp
+  | DeclRec (var, typ, exp) -> return tenv var @< typ_letrec tenv var typ exp
   | EOF -> assert false
