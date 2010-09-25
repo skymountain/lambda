@@ -80,7 +80,7 @@ let rec eval_exp env = function
         Some (env, exp) -> eval_exp env exp
       | None            -> err "match failure"
     end
-  | Construct (cname, _) ->
+  | Construct cname ->
       ConstrV (cname, [])
 
 (* evaluation for recursive def *)

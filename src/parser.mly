@@ -1,5 +1,6 @@
 %{
   open Syntax
+  let fresh_typvar () = TAny (Type.newtypvar ())
 %}
 
 %token BACKSLA DOT SEMICOLON2
@@ -55,14 +56,17 @@ Eval:
   Expr                                 { Exp $1 }
 | LET Ident EQ Expr                    { Decl ($2, $4) }
 | LET REC Ident COLON TypeExpr EQ Expr { DeclRec ($3, $5, $7) }
+| LET REC Ident EQ Expr                { DeclRec ($3, fresh_typvar (), $5) }
 
 Expr:
   SExpr { $1 }
 | AppExpr SExpr { App ($1, $2) }
       
 | BACKSLA Ident COLON TypeExpr DOT Expr        { Fun ($2, $4, $6) }
+| BACKSLA Ident DOT Expr                       { Fun ($2, fresh_typvar (), $4) }
 | LET Ident EQ Expr IN Expr                    { Let ($2, $4, $6) }
 | LET REC Ident COLON TypeExpr EQ Expr IN Expr { LetRec ($3, $5, $7, $9) }
+| LET REC Ident EQ Expr IN Expr                { LetRec ($3, fresh_typvar (), $5, $7) }
 | IF Expr THEN Expr ELSE Expr                  { IfExp ($2, $4, $6) }
 | MATCH Expr WITH MatchExpr                    { MatchExp ($2, $4) }
       
@@ -82,8 +86,8 @@ SExpr:
 | LPAREN Expr RPAREN { $2 }
 | LPAREN Expr COLON TypeExpr RPAREN
                      { TypedExpr ($2, $4) }
-| LPAREN UIDENT COLON TypeExpr RPAREN
-                     { Construct ($2, $4) }
+| UIDENT
+                     { Construct $1 }
 
 AppExpr:
   AppExpr SExpr { App ($1, $2) }
@@ -118,10 +122,10 @@ PatternExpr:
 | LSQPAREN PListExpr RSQPAREN    { PList $2 }
 | PatternExpr COLON2 PatternExpr { PCons ($1, $3) }
 | PatternExpr VBAR PatternExpr   { POr ($1, $3) }
-| LPAREN UIDENT COLON TypeExpr RPAREN
-                                 { PConstr ($2, $4, []) }
-| LPAREN UIDENT COLON TypeExpr RPAREN LPAREN PatternExprList RPAREN
-                                 { PConstr ($2, $4, $7) }
+| UIDENT
+                                 { PConstr ($1, []) }
+| UIDENT LPAREN PatternExprList RPAREN
+                                 { PConstr ($1, $3) }
 | LPAREN PatternExpr RPAREN      { $2 }
 
 PListExpr:

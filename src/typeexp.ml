@@ -24,6 +24,7 @@ let rec map_typ tctx = function
         None -> assert false
       | Some id -> TyVar id
     end
+  | Syntax.TAny typvar        -> TyVar typvar
   | Syntax.TName (typs, name) -> begin
       match TypeContext.lookup_typ tctx name with
       | None -> err @< Printf.sprintf "%s is used as constructor name, which wasn't defined" name
@@ -95,3 +96,7 @@ let rec local_unify acc typ1 typ2 = match typ1, typ2 with
   | (TyFun _|TyVariant _), _ -> None
 
 let local_unify ?(init = TypvarMap.empty) typ1 typ2 = local_unify init typ1 typ2
+
+let new_funtyp () =
+  let atyp, rtyp = fresh_typvar (), fresh_typvar () in
+  (TyFun (atyp, rtyp), atyp, rtyp)

@@ -3,7 +3,7 @@ open Type
 
 type t =
     {
-      typ_env   : (Syntax.id * typ) Env.t;
+      typ_env   : (Syntax.id * TypeScheme.t) Env.t;
       typdef_env: (Ident.t * typdef) Env.t;
       constr_env: (string * typdef) Env.t;
     }
@@ -39,3 +39,5 @@ let add_typ tctx ident typdef =
 let add_var tctx var typ = { tctx with typ_env = Env.extend tctx.typ_env var typ }
 
 let extend_typ_env tctx typ_env = { tctx with typ_env = Env.extend_by_env tctx.typ_env typ_env }
+
+let typ_env tctx = tctx.typ_env

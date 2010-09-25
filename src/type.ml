@@ -43,3 +43,8 @@ let rec newtypvar_list = function
     0 -> []
   | n when n > 0 -> (newtypvar ())::(newtypvar_list (n-1))
   | _ -> assert false
+
+let fresh_typvar () = TyVar (newtypvar ())
+
+let fresh_typvar_list n =
+  List.map (fun x -> TyVar x) @< newtypvar_list n

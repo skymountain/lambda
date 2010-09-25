@@ -23,3 +23,5 @@ val init_typvarmap : typvar list -> typ list -> typ TypvarMap.t
 
 val newtypvar      : unit -> typvar
 val newtypvar_list : int -> typvar list
+val fresh_typvar      : unit -> typ
+val fresh_typvar_list : int -> typ list

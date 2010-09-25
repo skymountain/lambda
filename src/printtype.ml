@@ -77,3 +77,8 @@ let pps =
 
 let pps_typ = pps (fun _ -> true)
 let pp_typ typ = print_string @< pps_typ typ
+
+let pps_typ_scheme typ =
+  let btypvars = TypeScheme.bound_typvars typ in
+  pps (fun tv -> TypvarSet.mem tv btypvars) @< TypeScheme.typ typ
+let pp_typ_scheme typ = print_string @< pps_typ_scheme typ

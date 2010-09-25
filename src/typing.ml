@@ -7,156 +7,180 @@ open TypeContext
 open Typeexp
 open Printtype
 
+let closure tctx subst typ =
+  let tenv = Subst.subst_tenv subst @< TypeContext.typ_env tctx in
+  TypeScheme.closure typ tenv
+
+(* unification utils *)
+let unify_err s = err s
+
+let unify subst typ1 typ2 msg =
+  match Subst.unify subst @< Subst.make_eq typ1 typ2 with
+    None       -> unify_err msg
+  | Some subst -> subst
+
+let unifyl subst typs msg =
+  match Subst.unifyl subst @< Subst.make_eqs typs with
+    None       -> unify_err msg
+  | Some subst -> subst
+
 (* typing for constant *)
-let typ_const tctx = function
-    CInt _        -> PredefType.int_typ
-  | CBool _       -> PredefType.bool_typ
+let typ_const tctx subst = function
+    CInt _        -> (subst, PredefType.int_typ)
+  | CBool _       -> (subst, PredefType.bool_typ)
   | CNullList typ -> begin
-      match typ with
-        TName _ -> map_typ tctx typ
-      | _       -> err "specified type isn't list type"
+      let typ = map_typ tctx typ in
+      let ltyp, _ = PredefType.new_listyp () in
+      let subst = unify subst ltyp typ "specified type isn't list type" in
+      (subst, Subst.subst_typ subst ltyp)
     end
 
 (* typing for binary operator *)
-let typ_binop typ1 typ2 = function
+let typ_binop tctx subst typ1 typ2 = function
     (BPlus | BMinus | BMult | BDiv | BLt ) -> assert false
   | BCons -> begin
-      let ltyp = PredefType.inst_list_typ typ1 in
-      if eq_typ ltyp typ2 then typ2
-      else err @< Printf.sprintf "element types of %s must be same types" @< str_of_binop BCons
+      let ltyp, etyp = PredefType.new_listyp () in
+      let subst = unifyl subst [(ltyp, typ2); (etyp, typ1)] "element types of %s must be same types" in
+      (subst, Subst.subst_typ subst ltyp)
     end
 
 (* typing for exp *)
-let rec typ_exp tctx = function
+let rec typ_exp tctx subst = function
     Var var -> begin
       match lookup_var tctx var with
-        Some t -> t
+        Some t -> (subst, Subst.subst_typ subst @< TypeScheme.instantiate t)
       | None   -> err @< Printf.sprintf "%s is not bound" var
     end
 
   | Const c ->
-      typ_const tctx c
+      typ_const tctx subst c
 
   | BinOp (op, exp1, exp2) -> begin
-      let typ1 = typ_exp tctx exp1 in
-      let typ2 = typ_exp tctx exp2 in
-      typ_binop typ1 typ2 op
+      let subst, typ1 = typ_exp tctx subst exp1 in
+      let subst, typ2 = typ_exp tctx subst exp2 in
+      typ_binop tctx subst typ1 typ2 op
     end
 
   | IfExp (cond, then_exp, else_exp) -> begin
-      match typ_exp tctx cond with
-        cond_typ when eq_typ cond_typ PredefType.bool_typ -> begin
-          let then_typ = typ_exp tctx then_exp in
-          let else_typ = typ_exp tctx else_exp in
-          if eq_typ then_typ else_typ then then_typ
-          else err "types of then and else expressions must be same"
-        end
-      | _ -> err "type of conditional expression must be boolean"
+      let subst, ctyp = typ_exp tctx subst cond in
+      let subst = unify subst ctyp PredefType.bool_typ "type of conditional expression must be boolean" in
+      let subst, then_typ = typ_exp tctx subst then_exp in
+      let subst, else_typ = typ_exp tctx subst else_exp in
+      let subst = unify subst then_typ else_typ "types of then and else expressions must be same" in
+      (subst, Subst.subst_typ subst then_typ)
     end
 
-  | Fun (var, typ, body) ->
+  | Fun (var, typ, body) -> begin
       let typ = map_typ tctx typ in
-      let tctx = add_var tctx var typ in
-      let btyp = typ_exp tctx body in
-      TyFun (typ, btyp)
+      let subst, rtyp = typ_exp (add_var tctx var @< TypeScheme.monotyp typ) subst body in
+      (subst, TyFun (Subst.subst_typ subst typ, rtyp))
+    end
 
   | App (exp1, exp2) -> begin
-      match typ_exp tctx exp1 with
-        TyFun (arg_typ, ret_typ) ->
-          let arg_typ' = typ_exp tctx exp2 in
-          if eq_typ arg_typ arg_typ' then ret_typ
-          else err "type of actual argument must correspond with one of formal argument"
-      | _ -> err "only function type can be applied"
+      let subst, funtyp = typ_exp tctx subst exp1 in
+      let funtyp', ftyp, rtyp = new_funtyp () in
+      let subst = unify subst funtyp funtyp' "only function type can be applied" in
+      let subst, atyp = typ_exp tctx subst exp2 in
+      let subst = unify subst atyp ftyp "type of actual argument must correspond with one of formal argument" in
+      (subst, Subst.subst_typ subst rtyp)
     end
 
   | Let (var, exp, body) -> begin
-      let typ = typ_exp tctx exp in
-      let tctx = add_var tctx var typ in
-      typ_exp tctx body
+      let subst, typ = typ_exp tctx subst exp in
+      typ_exp (add_var tctx var @< closure tctx subst typ) subst body
     end
 
   | LetRec (var, typ, exp, body) -> begin
-      let typ = typ_letrec tctx var typ exp in
-      let tctx = add_var tctx var typ in
-      typ_exp tctx body
+      let subst, typ = typ_letrec tctx subst var typ exp in
+      typ_exp (add_var tctx var @< closure tctx subst typ) subst body
     end
 
   | ListLit exps -> begin
-      let typs = List.map (typ_exp tctx) exps in
+      let subst, typs =
+        List.fold_left (fun (subst, typs) exp ->
+                          let subst, typ = typ_exp tctx subst exp in
+                          (subst, typ::typs))
+        (subst, []) exps
+      in
+      let typs = List.rev typs in
       let typ, typs = match typs with typ::typs -> (typ, typs) | _ -> assert false in (* assume exps is not empty *)
-      List.iter (fun typ' -> if not (eq_typ typ typ') then err "element types of list must be same") typs;
-      PredefType.inst_list_typ typ
+      let subst = List.fold_left (fun subst typ' -> unify subst typ typ' "element types of list must be same") subst typs in
+      (subst, PredefType.inst_list_typ @< Subst.subst_typ subst typ)
     end
 
   | TypedExpr (exp, typ) -> begin
-      let typ' = typ_exp tctx exp in
+      let subst, typ' = typ_exp tctx subst exp in
       let typ = map_typ tctx typ in
-      if eq_typ typ typ' then typ
-      else err "expression's type doesn't cossrespond with the specified type"
+      let subst = unify subst typ typ' "expression's type doesn't cossrespond with the specified type" in
+      (subst, Subst.subst_typ subst typ)
     end
 
   | MatchExp (exp, branches) -> begin
-      let typ = typ_exp tctx exp in
-      let rec iter tctx cond_typ = function
+      let subst, typ = typ_exp tctx subst exp in
+      let rec iter subst cond_typ = function
           [(pat, body)] -> begin
-            let tenv = Patmatch.tmatch tctx cond_typ pat in
-            let tctx = extend_typ_env tctx tenv in
-            typ_exp tctx  body
+            let tenv, subst = Patmatch.tmatch tctx subst cond_typ pat in
+            typ_exp (extend_typ_env tctx tenv) subst body
           end
         | (pat, body)::t -> begin
-            let extended_tctx = extend_typ_env tctx @< Patmatch.tmatch tctx cond_typ pat in
-            let btyp = typ_exp extended_tctx body in
-            let btyp' = iter tctx cond_typ t in
-            if eq_typ btyp btyp' then btyp
-            else err @< Printf.sprintf "%s doesn't match with %s: all branch expresions must be same types"
-              (pps_typ btyp) (pps_typ btyp')
+            let tenv, subst = Patmatch.tmatch tctx subst cond_typ pat in
+            let subst, btyp = typ_exp (extend_typ_env tctx tenv) subst body in
+            let subst, btyp' = iter subst cond_typ t in
+            let subst = unify subst btyp btyp'
+              @< Printf.sprintf "%s doesn't match with %s: all branch expresions must be same types"
+               (pps_typ btyp) (pps_typ btyp')
+            in
+            (subst, Subst.subst_typ subst btyp)
           end
         | _ -> assert false
       in
-      iter tctx typ branches
+      iter subst typ branches
     end
-  | Construct (constr_name, typ) -> begin
+
+  | Construct constr_name -> begin
       let rec funtyp_of =
         function
           [] -> assert false
         | typ::[] -> typ
         | typ::typs -> TyFun (typ, (funtyp_of typs))
       in
-      let typ = map_typ tctx typ in
       match variant_constr tctx constr_name with
       | Some (typdef, constr_typs) -> begin
           let constr_typ = funtyp_of @<
             constr_typs @ [TyVariant (List.map (fun x -> TyVar x) typdef.td_params, typdef.td_id)]
           in
-          match local_unify constr_typ typ with
-          | Some _ -> typ
-          | None   -> err "type of variant constructor is invalid"
+          let typvarmap = init_typvarmap typdef.td_params @< fresh_typvar_list typdef.td_arity in
+          (subst, replace_tyvar typvarmap constr_typ)
         end
       | _ -> err "no such variant constructor"
     end
 
 (* typing for let-rec *)
-and typ_letrec tctx var typ exp =
+and typ_letrec tctx subst var typ exp =
   let typ = map_typ tctx typ in
-  match exp, typ with
-    Fun _, TyFun _ -> begin
-      let tctx = add_var tctx var typ in
-      let etyp = typ_exp tctx exp in
-      if eq_typ typ etyp then etyp
-      else err "expression's type doesn't cossrespond with the specified type"
+  let funtyp, ftyp, rtyp = new_funtyp () in
+  match exp with
+    Fun _ -> begin
+      let subst = unify subst funtyp typ "only values which are functions can be defined recursively" in
+      let tctx' = add_var tctx var @< TypeScheme.monotyp funtyp in
+      let subst, etyp = typ_exp tctx' subst exp in
+      let subst = unify subst funtyp etyp "expression's type doesn't cossrespond with a function type" in
+      (subst, Subst.subst_typ subst etyp)
     end
   | _ -> err "only values which are functions can be defined recursively"
 
 (* typing for program *)
 let typing tctx =
-  let return tctx var typ =
+  let return tctx var (subst, typ) =
+    let typ = closure tctx subst typ in
     let tctx = add_var tctx var typ in
     (tctx, var, typ);
   in
+  
   function
-    Exp exp -> return tctx "it" @< typ_exp tctx exp
-  | Decl (var, exp) -> return tctx var @< typ_exp tctx exp
-  | DeclRec (var, typ, exp) -> return tctx var @< typ_letrec tctx var typ exp
+    Exp exp -> return tctx "it" @< typ_exp tctx Subst.empty exp
+  | Decl (var, exp) -> return tctx var @< typ_exp tctx Subst.empty exp
+  | DeclRec (var, typ, exp) -> return tctx var @< typ_letrec tctx Subst.empty var typ exp
 
 
 module ConstrSet = Set.Make(String)

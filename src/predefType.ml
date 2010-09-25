@@ -36,5 +36,8 @@ let etyp_of_list typ = match variant typ with
     Some (typ::[], _) -> Some typ
   | Some _            -> assert false
   | None              -> None
+let new_listyp () =
+  let etyp = fresh_typvar () in
+  (inst_list_typ etyp, etyp)
 
 let predef_env = Env.extendl Env.empty [(int_ident, int_typdef); (bool_ident, bool_typdef); (list_ident, list_typdef)]

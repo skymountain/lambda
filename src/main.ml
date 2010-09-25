@@ -25,7 +25,7 @@ let rec read_eval_print prompt fun_lexbuf tctx env err =
         let (tctx, id_typ, typ) = Typing.typing tctx e in
         let (newenv, id ,v) = Eval.eval env e in
         assert (id_typ = id);
-        Printf.printf "val %s : %s = %s" id (pps_typ typ) (pps_val v);
+        Printf.printf "val %s : %s = %s" id (pps_typ_scheme typ) (pps_val v);
         print_newline ();
         read_eval_print prompt fun_lexbuf tctx newenv err
       end
@@ -67,22 +67,22 @@ let init_ctx binds =
 let (env, tctx) =
   init_ctx
     [
-      ("i", IntV 1, PredefType.int_typ); ("ii", IntV 2, PredefType.int_typ);
+      ("i", IntV 1, TypeScheme.monotyp PredefType.int_typ); ("ii", IntV 2, TypeScheme.monotyp PredefType.int_typ);
 
       ("+", FunV ("x", Fun ("y", TName ([], "int"), BinOp (BPlus, Var "x", Var "y")), ref Env.empty),
-       TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+       TypeScheme.monotyp @< TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
 
       ("-", FunV ("x", Fun ("y", TName ([], "int"), BinOp (BMinus, Var "x", Var "y")), ref Env.empty),
-       TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+       TypeScheme.monotyp @< TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
 
       ("*", FunV ("x", Fun ("y", TName ([], "int"), BinOp (BMult, Var "x", Var "y")), ref Env.empty),
-       TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+       TypeScheme.monotyp @< TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
 
       ("/", FunV ("x", Fun ("y", TName ([], "int"), BinOp (BDiv, Var "x", Var "y")), ref Env.empty),
-       TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+       TypeScheme.monotyp @< TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
 
       ("<", FunV ("x", Fun ("y", TName ([], "int"), BinOp (BLt, Var "x", Var "y")), ref Env.empty),
-       TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.bool_typ)));
+       TypeScheme.monotyp @< TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.bool_typ)));
     ]
 
 let main () =

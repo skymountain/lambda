@@ -2,4 +2,4 @@ lexer.ml
 parser.ml
 parser.mli
 lambda
-test/
+tmp/

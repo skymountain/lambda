@@ -14,6 +14,7 @@ type typ =
   | TFun  of typ * typ
   | TVar  of id
   | TName of typ list * id
+  | TAny  of Type.typvar
 
 type const =
     CInt      of int
@@ -29,7 +30,7 @@ type pat =
   | PList  of pat list
   | PCons  of pat * pat
   | POr    of pat * pat
-  | PConstr of string * typ * pat list
+  | PConstr of string * pat list
 
 type exp =
     Var     of id
@@ -43,7 +44,7 @@ type exp =
   | ListLit of exp list
   | TypedExpr of exp * typ
   | MatchExp of exp * (pat * exp) list
-  | Construct of string * typ
+  | Construct of string
 
 type eval =
     Exp  of exp

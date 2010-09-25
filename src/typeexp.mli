@@ -8,3 +8,4 @@ val eq_typ        : Type.typ -> Type.typ -> bool
 val variant       : Type.typ -> (Type.typ list * Ident.t) option
 val variant_constr: TypeContext.t -> string -> (Type.typdef * Type.typ list) option
 val local_unify   : ?init:Type.typ Type.TypvarMap.t -> Type.typ -> Type.typ -> Type.typ Type.TypvarMap.t option
+val new_funtyp    : unit -> Type.typ * Type.typ * Type.typ
