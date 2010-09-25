@@ -18,7 +18,7 @@ let rec read_eval_print prompt fun_lexbuf tenv env err =
         assert (id_typ = id);
         print_string @< "val "^id;
         print_string " : ";
-        Typing.pp_typ typ;
+        Type.pp_typ typ;
         print_string " = ";
         Eval.pp_val v;
         print_newline ();

@@ -1,107 +1,129 @@
 open Misc
 open Syntax
+open Common
+open OptionMonad;;
 
 exception Typing_error of string
 let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
 
-(* pretty printer for type *)
-let rec pps_typ =
-  let is_funtyp_without_paren s =
-    let len = String.length s in
-    let rec iter idx depth =
-      if idx >= len then false
-      else match s.[idx] with
-        '(' -> iter (idx+1) (depth+1)
-      | ')' -> iter (idx+1) (depth-1)
-      | '-' when idx+1 < len && s.[idx+1] = '>'-> true
-      | _   -> iter (idx+1) depth
-    in
-    iter 0 0
-  in
-  function
-    IntT  -> "int"
-  | BoolT -> "bool"
-  | FunT (typ1, typ2) -> begin
-      let t = pps_typ typ1 in
-      let t = if is_funtyp_without_paren t then "("^t^")" else t in
-      t ^ " -> " ^ (pps_typ typ2)
-    end
+(* unification utils *)
+let unify_err s = err s
 
-let rec pp_typ typ =
-  print_string @< pps_typ typ
+let unify_with_tenv subst tenv typ1 typ2 msg =
+  match Subst.unify subst @< Subst.make_eq typ1 typ2 with
+    None       -> unify_err msg
+  | Some subst -> (Subst.subst_tenv subst tenv, subst)
 
-(* equality function *)
-let rec eq_typ typ1 typ2 =
-  match typ1, typ2 with
-    IntT, IntT -> true
-  | FunT (arg1, ret1), FunT (arg2, ret2) ->
-      eq_typ arg1 arg2 && eq_typ ret1 ret2
-  | BoolT, BoolT -> true
-  | _ -> false
+let unifyl_with_tenv subst tenv typs msg =
+  match Subst.unifyl subst @< Subst.make_eqs typs with
+    None       -> unify_err msg
+  | Some subst -> (Subst.subst_tenv subst tenv, subst)
 
 (* typing for binary operator *)      
-let typ_binop typ1 typ2 = function
-    (Plus | Minus | Mult | Div) as op ->
-      if typ1 = IntT && typ2 = IntT then IntT
-      else err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
-  | Eq ->
-      if eq_typ typ1 typ2 then BoolT
-      else err @< Printf.sprintf "both arguments of %s must be same types" @< str_of_binop Eq
-        
+let typ_binop tenv subst typ1 typ2 =
+  let return typ (tenv, subst) = (tenv, subst, typ)
+  in
+  function
+    (Plus | Minus | Mult | Div) as op -> begin
+      let err_msg = Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op in
+      match typ1, typ2 with
+      (* int, int *)
+        IntT, IntT -> (tenv, subst, IntT)
+      (* int, 'a *)
+      | IntT, TypVar _ -> return IntT @< unify_with_tenv subst tenv IntT typ2 err_msg
+      (* 'a, int *)
+      | TypVar _, IntT -> return IntT @< unify_with_tenv subst tenv typ1 IntT err_msg
+      (* 'a, 'b *)
+      | TypVar _, TypVar _ ->
+          return IntT @< unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT);] err_msg
+      (* others *)
+      | _ -> err err_msg
+    end
+  | Eq -> begin
+      let err_msg = Printf.sprintf "both arguments of %s must be same types" @< str_of_binop Eq in
+      return BoolT @< unify_with_tenv subst tenv typ1 typ2 err_msg
+    end
+
 (* typing for exp *)
-let rec typ_exp tenv = function
+let rec typ_exp tenv subst = function
     Var var -> begin
       match Env.lookup tenv var with
-        Some t -> t
+        Some t -> (tenv, subst, Subst.subst_typ subst @< TypeScheme.instantiate t)
       | None   -> err @< Printf.sprintf "%s is not bound" var
     end
-  | IntLit _  -> IntT
-  | BoolLit _ -> BoolT
-  | BinOp (op, exp1, exp2)  ->
-      let typ1, typ2 = typ_exp tenv exp1, typ_exp tenv exp2 in
-      typ_binop typ1 typ2 op
+      
+  | IntLit _  -> (tenv, subst, IntT)
+      
+  | BoolLit _ -> (tenv, subst, BoolT)
+      
+  | BinOp (op, exp1, exp2) -> begin
+      let tenv, subst, typ1 = typ_exp tenv subst exp1 in
+      let tenv, subst, typ2 = typ_exp tenv subst exp2 in
+      typ_binop tenv subst typ1 typ2 op
+    end
+      
   | IfExp (cond, then_exp, else_exp) -> begin
-      match typ_exp tenv cond with
-        BoolT -> begin
-          let then_typ = typ_exp tenv then_exp in
-          let else_typ = typ_exp tenv else_exp in
-          if eq_typ then_typ else_typ then then_typ
-          else err "types of then and else expressions must be same"
-        end
-      | _ -> err "type of conditional expression must be boolean"
+      let tenv, subst, ctyp = typ_exp tenv subst cond in
+      let tenv, subst = unify_with_tenv subst tenv ctyp BoolT "type of conditional expression must be boolean" in
+      let tenv, subst, then_typ = typ_exp tenv subst then_exp in
+      let tenv, subst, else_typ = typ_exp tenv subst else_exp in
+      let tenv, subst = unify_with_tenv subst tenv then_typ else_typ "types of then and else expressions must be same" in
+      (tenv, subst, Subst.subst_typ subst then_typ)
+
     end
-  | Fun (var, typ, body) ->
-      FunT (typ, typ_exp (Env.extend tenv var typ) body)
+  | Fun (var, typ, body) -> begin
+      let tenv, subst, rtyp = typ_exp (Env.extend tenv var @< TypeScheme.make TypVarSet.empty typ) subst body in
+      let tenv = Env.remove tenv var in
+      (tenv, subst, FunT (Subst.subst_typ subst typ, rtyp))
+    end
+      
   | App (exp1, exp2) -> begin
-      match typ_exp tenv exp1 with
-        FunT (arg_typ, ret_typ) ->
-          if eq_typ arg_typ @< typ_exp tenv exp2 then ret_typ
-          else err "type of actual argument must correspond with one of formal argument"
-      | _ -> err "only function type can be applied"
+      let tenv, subst, funtyp = typ_exp tenv subst exp1 in
+      let ftyp, rtyp = Type.fresh_typvar (), Type.fresh_typvar () in
+      let funtyp' = FunT (ftyp, rtyp) in
+      let tenv, subst = unify_with_tenv subst tenv funtyp funtyp' "only function type can be applied" in
+      let tenv, subst, atyp = typ_exp tenv subst exp2 in
+      let ftyp = Subst.subst_typ subst ftyp in
+      let tenv, subst = unify_with_tenv subst tenv ftyp atyp "type of actual argument must correspond with one of formal argument" in
+      (tenv, subst, Subst.subst_typ subst rtyp)
     end
-  | Let (var, exp, body) ->
-      typ_exp (Env.extend tenv var @< typ_exp tenv exp) body
-  | LetRec (var, typ, exp, body) ->
-      typ_exp (Env.extend tenv var @< typ_letrec tenv var typ exp) body
+      
+  | Let (var, exp, body) -> begin
+      let tenv, subst, typ = typ_exp tenv subst exp in
+      let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv) subst body in
+      (Env.remove tenv var, subst, typ)
+    end
+      
+  | LetRec (var, typ, exp, body) -> begin
+      let tenv, subst, typ = typ_letrec tenv subst var typ exp in
+      let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv) subst body in
+      (Env.remove tenv var, subst, typ)
+    end
         
 (* typing for let-rec *)
-and typ_letrec tenv var typ exp =
-  match exp, typ with
-    Fun _, FunT _ -> begin
-      let tenv' = (Env.extend tenv var typ) in
-      let etyp = typ_exp tenv' exp in
-      if eq_typ typ etyp then etyp
-      else err "expression's type doesn't cossrespond with the specified type"
+and typ_letrec tenv subst var funtyp exp =
+  let ftyp, rtyp = Type.fresh_typvar (), Type.fresh_typvar () in
+  let funtyp' = FunT (ftyp, rtyp) in
+  match exp with
+    Fun _ -> begin
+      let tenv, subst = unify_with_tenv subst tenv funtyp funtyp' "only values which are functions can be defined recursively" in
+      let funtyp = Subst.subst_typ subst funtyp in
+      let tenv = Env.extend tenv var @< TypeScheme.make TypVarSet.empty funtyp in
+      let tenv, subst, etyp = typ_exp tenv subst exp in
+      let tenv, subst = unify_with_tenv subst tenv funtyp etyp "expression's type doesn't cossrespond with a function type" in
+      (Env.remove tenv var, subst, Subst.subst_typ subst etyp)
     end
   | _    -> err "only values which are functions can be defined recursively"
     
 (* typing for program *)
 let typing tenv =
-  let return tenv var typ =
-    Env.extend tenv var typ, var, typ
+  
+  let return tenv var (_, _, typ) =
+    Env.extend tenv var @< TypeScheme.closure typ tenv, var, typ
   in
+  
   function
-    Exp exp -> return tenv "it" @< typ_exp tenv exp
-  | Decl (var, exp) -> return tenv var @< typ_exp tenv exp
-  | DeclRec (var, typ, exp) -> return tenv var @< typ_letrec tenv var typ exp
+    Exp exp -> return tenv "it" @< typ_exp tenv Subst.empty exp
+  | Decl (var, exp) -> return tenv var @< typ_exp tenv Subst.empty exp
+  | DeclRec (var, typ, exp) -> return tenv var @< typ_letrec tenv Subst.empty var typ exp
   | EOF -> assert false

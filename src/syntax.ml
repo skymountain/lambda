@@ -12,11 +12,14 @@ let str_of_binop = function
   | Mult  -> "*"
   | Div   -> "/"
   | Eq -> "="
+
+type typvar = int
       
 type typ =
     IntT
   | BoolT
   | FunT of typ * typ
+  | TypVar of typvar
       
 type exp =
     Var     of id

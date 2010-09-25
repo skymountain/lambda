@@ -29,10 +29,15 @@ OCamlGeneratedFiles(parser.ml lexer.ml)
 
 FILES[] =
 	misc
+	optionMonad
+	common
 	env
 	syntax
 	parser
 	lexer
+	type
+	typeScheme
+	subst
 	typing
 	eval
 	main

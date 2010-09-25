@@ -21,7 +21,7 @@
 
 let alphabet  = ['a'-'z']
 let ident_top = ['a'-'z' '_']
-let ident_bdy = ['a'-'z' '_' '\'']
+let ident_bdy = ['a'-'z' '_' '\'' '0' - '9']
 let blank = [' ' '\009' '\012' '\n']
 rule main = parse
   blank+ { main lexbuf }
