@@ -44,9 +44,13 @@ let typ_binop typ1 typ2 = function
     (Plus | Minus | Mult | Div) as op ->
       if typ1 = IntT && typ2 = IntT then IntT
       else err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
+  | Lt ->
+      if typ1 = IntT && typ2 = IntT then BoolT
+      else err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop Lt
   | Eq ->
       if eq_typ typ1 typ2 then BoolT
       else err @< Printf.sprintf "both arguments of %s must be same types" @< str_of_binop Eq
+
         
 (* typing for exp *)
 let rec typ_exp tenv = function

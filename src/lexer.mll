@@ -35,6 +35,7 @@ rule main = parse
 | '.'    { Parser.DOT }
 | '='    { Parser.EQ }
 | ':'    { Parser.COLON }
+| '<'    { Parser.LT }
 | "->"   { Parser.RARROW }
 | ";;"   { Parser.SEMICOLON2 }
 | "(*"   { comment 0 lexbuf; main lexbuf }

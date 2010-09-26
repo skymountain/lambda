@@ -27,14 +27,15 @@ let eval_binop = function
   | (Mult, IntV vl, IntV vr) -> IntV (vl * vr)
   | (Div, IntV vl, IntV vr) when vr <> 0  -> IntV (vl / vr)
   | (Div, IntV _, IntV _)  -> err "division by zero isn't allowed"
-  | (Plus as op, _, _) | (Minus as op, _, _) | (Mult as op, _, _) | (Div as op, _, _) ->
+  | (Lt, IntV vl, IntV vr) -> BoolV (vl < vr)
+  | (Plus as op, _, _) | (Minus as op, _, _) | (Mult as op, _, _) | (Div as op, _, _) | (Lt as op, _, _) ->
       err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
   (* equal *)
   | (Eq, IntV v1, IntV v2) -> BoolV (v1 = v2)
   | (Eq, BoolV v1, BoolV v2) -> BoolV (v1 = v2)
   | (Eq, FunV _, FunV _) -> err "functions cannot be compared"
   | (Eq, _, _) -> err "both arguments of = must be same type"
-
+      
 (* evaluation for exp *)
 let rec eval_exp env = function
     Var var ->
