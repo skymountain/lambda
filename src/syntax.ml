@@ -6,12 +6,14 @@ type binop =
   | Mult
   | Div
   | Eq
+  | Lt
 let str_of_binop = function
     Plus  -> "+"
   | Minus -> "-"
   | Mult  -> "*"
   | Div   -> "/"
-  | Eq -> "="
+  | Eq    -> "="
+  | Lt    -> "<"
 
 type typvar = int
       

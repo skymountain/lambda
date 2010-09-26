@@ -35,8 +35,10 @@ rule main = parse
 | '.'    { Parser.DOT }
 | '='    { Parser.EQ }
 | ':'    { Parser.COLON }
+| '<'    { Parser.LT }
 | "->"   { Parser.RARROW }
 | ";;"   { Parser.SEMICOLON2 }
+| "(*"   { comment 0 lexbuf; main lexbuf }
 | "-"? [ '0'-'9' ]+
       {
         let s = Lexing.lexeme lexbuf in
@@ -51,3 +53,8 @@ rule main = parse
          }
 | eof    { EOF }
 | _      { err (Printf.sprintf "unknown token: %s" @< Lexing.lexeme lexbuf) }
+and comment depth = parse
+    "*)" { if depth = 0 then () else comment (depth-1) lexbuf }
+  | "(*" { comment (depth+1) lexbuf }
+  | eof  { err "comment not terminated" }
+  | _    { comment depth lexbuf }

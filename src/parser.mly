@@ -4,7 +4,7 @@
 
 %token BACKSLA DOT SEMICOLON2
 %token LPAREN RPAREN  
-%token PLUS ASTER SLASH MINUS
+%token PLUS ASTER SLASH MINUS LT
 %token RARROW COLON
 %token EQ
 %token LET IN
@@ -17,7 +17,7 @@
 %token<int> INTLIT
 %token EOF
 
-%left EQ
+%left EQ LT
 %left PLUS MINUS
 %left ASTER SLASH
 %right RARROW
@@ -48,6 +48,7 @@ ArithExpr:
 | ArithExpr ASTER ArithExpr { BinOp (Mult,  $1, $3) }
 | ArithExpr SLASH ArithExpr { BinOp (Div,   $1, $3) }
 | ArithExpr EQ    ArithExpr { BinOp (Eq,    $1, $3) }
+| ArithExpr LT    ArithExpr { BinOp (Lt,    $1, $3) }
 | AppExpr         { $1 }
 
 AppExpr:

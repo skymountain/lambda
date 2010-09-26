@@ -19,29 +19,23 @@ let unifyl_with_tenv subst tenv typs msg =
     None       -> unify_err msg
   | Some subst -> (Subst.subst_tenv subst tenv, subst)
 
-(* typing for binary operator *)      
+(* typing for binary operator *)
 let typ_binop tenv subst typ1 typ2 =
-  let return typ (tenv, subst) = (tenv, subst, typ)
-  in
   function
     (Plus | Minus | Mult | Div) as op -> begin
       let err_msg = Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op in
-      match typ1, typ2 with
-      (* int, int *)
-        IntT, IntT -> (tenv, subst, IntT)
-      (* int, 'a *)
-      | IntT, TypVar _ -> return IntT @< unify_with_tenv subst tenv IntT typ2 err_msg
-      (* 'a, int *)
-      | TypVar _, IntT -> return IntT @< unify_with_tenv subst tenv typ1 IntT err_msg
-      (* 'a, 'b *)
-      | TypVar _, TypVar _ ->
-          return IntT @< unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT);] err_msg
-      (* others *)
-      | _ -> err err_msg
+      let tenv, subst = unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT)] err_msg in
+      (tenv, subst, IntT)
+    end
+  | Lt -> begin
+      let err_msg = Printf.sprintf "both arguments of %s must be integer" @< str_of_binop Lt in
+      let tenv, subst = unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT);] err_msg in
+      (tenv, subst, BoolT)
     end
   | Eq -> begin
       let err_msg = Printf.sprintf "both arguments of %s must be same types" @< str_of_binop Eq in
-      return BoolT @< unify_with_tenv subst tenv typ1 typ2 err_msg
+      let tenv, subst = unify_with_tenv subst tenv typ1 typ2 err_msg in
+      (tenv, subst , BoolT)
     end
 
 (* typing for exp *)
