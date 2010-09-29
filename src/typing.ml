@@ -22,9 +22,6 @@ let typ_binop typ1 typ2 = function
   | Lt ->
       if typ1 = IntT && typ2 = IntT then BoolT
       else err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop Lt
-  | Eq ->
-      if Type.eq_typ typ1 typ2 then BoolT
-      else err @< Printf.sprintf "both arguments of %s must be same types" @< str_of_binop Eq
   | Cons -> begin
       match typ2 with
         ListT etyp ->

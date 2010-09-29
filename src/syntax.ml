@@ -5,7 +5,6 @@ type binop =
   | Minus
   | Mult
   | Div
-  | Eq
   | Lt
   | Cons
       
@@ -14,7 +13,6 @@ let str_of_binop = function
   | Minus -> "-"
   | Mult  -> "*"
   | Div   -> "/"
-  | Eq    -> "="
   | Lt    -> "<"
   | Cons  -> "::"
       

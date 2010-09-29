@@ -24,11 +24,6 @@ let eval_binop = function
   | Lt, IntV vl, IntV vr               -> BoolV (vl < vr)
   | (Plus as op, _, _) | (Minus as op, _, _) | (Mult as op, _, _) | (Div as op, _, _) | (Lt as op, _, _) ->
       err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
-  (* equal *)
-  | Eq, IntV v1, IntV v2   -> BoolV (v1 = v2)
-  | Eq, BoolV v1, BoolV v2 -> BoolV (v1 = v2)
-  | Eq, FunV _, FunV _     -> err "functions cannot be compared"
-  | Eq, _, _               -> err @< Printf.sprintf "both arguments of %s must be same type" @< str_of_binop Eq
   (* cons *)
   | Cons, v, ListV vs      -> ListV (v::vs)
   | Cons, _, _             -> err "right-side of %s must be list type" @< str_of_binop Cons

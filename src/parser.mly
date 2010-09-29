@@ -58,7 +58,6 @@ BinExpr:
 | BinExpr MINUS  BinExpr { BinOp (Minus, $1, $3) }
 | BinExpr ASTER  BinExpr { BinOp (Mult,  $1, $3) }
 | BinExpr SLASH  BinExpr { BinOp (Div,   $1, $3) }
-| BinExpr EQ     BinExpr { BinOp (Eq,    $1, $3) }
 | BinExpr LT     BinExpr { BinOp (Lt,    $1, $3) }
 | BinExpr COLON2 BinExpr { BinOp (Cons,  $1, $3) }
 | AppExpr                { $1 }
