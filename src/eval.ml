@@ -11,7 +11,7 @@ let err s = raise (Eval_error (Printf.sprintf "Runtime error: %s" s))
 let eval_const = function
     CInt i      -> IntV i
   | CBool b     -> BoolV b
-  | CNullList _ -> ListV []
+  | CNullList   -> ListV []
     
 (* evaluation for binary operator *)
 let eval_binop = function

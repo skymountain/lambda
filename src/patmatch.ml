@@ -9,9 +9,9 @@ let ematch_const v c =
   match (v, c) with
     IntV i, CInt i' when i = i'   -> true
   | BoolV b, CBool b' when b = b' -> true
-  | ListV [], CNullList _         -> true
+  | ListV [], CNullList           -> true
   | _, _                          -> false
-  
+
 let list_contents = function ListV vs -> Some vs | _ -> None
 
 let rec ematch v = function
