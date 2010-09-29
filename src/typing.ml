@@ -10,12 +10,12 @@ let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
 let unify_err s = err s
 
 let unify_with_tenv subst tenv typ1 typ2 msg =
-  match Subst.unify subst @< Subst.make_eq typ1 typ2 with
+  match Subst.unify subst typ1 typ2 with
     None       -> unify_err msg
   | Some subst -> (Subst.subst_tenv subst tenv, subst)
 
 let unifyl_with_tenv subst tenv typs msg =
-  match Subst.unifyl subst @< Subst.make_eqs typs with
+  match Subst.unifyl subst typs with
     None       -> unify_err msg
   | Some subst -> (Subst.subst_tenv subst tenv, subst)
 
@@ -37,7 +37,16 @@ let typ_binop tenv subst typ1 typ2 =
       let tenv, subst = unify_with_tenv subst tenv typ1 typ2 err_msg in
       (tenv, subst , BoolT)
     end
-
+  | Cons -> begin
+      let etyp = Type.fresh_typvar () in
+      let ltyp = ListT etyp in
+      let tenv, subst = unify_with_tenv subst tenv typ2 ltyp
+        @< Printf.sprintf "right-side of %s must be list type" @< str_of_binop Cons in
+      let tenv, subst = unify_with_tenv subst tenv typ1 etyp
+        @< Printf.sprintf "element types of %s must be same types" @< str_of_binop Cons in
+      (tenv, subst, ListT (Subst.subst_typ subst etyp))
+    end
+      
 (* typing for exp *)
 let rec typ_exp tenv subst = function
     Var var -> begin
@@ -45,10 +54,8 @@ let rec typ_exp tenv subst = function
         Some t -> (tenv, subst, Subst.subst_typ subst @< TypeScheme.instantiate t)
       | None   -> err @< Printf.sprintf "%s is not bound" var
     end
-      
-  | IntLit _  -> (tenv, subst, IntT)
-      
-  | BoolLit _ -> (tenv, subst, BoolT)
+
+  | Const c -> (tenv, subst, Type.of_const c)
       
   | BinOp (op, exp1, exp2) -> begin
       let tenv, subst, typ1 = typ_exp tenv subst exp1 in
@@ -92,6 +99,52 @@ let rec typ_exp tenv subst = function
       let tenv, subst, typ = typ_letrec tenv subst var typ exp in
       let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv) subst body in
       (Env.remove tenv var, subst, typ)
+    end
+
+  | ListLit exps -> begin
+      let etyp = Type.fresh_typvar () in
+      let tenv, subst = List.fold_left (fun (tenv, subst) exp ->
+                                          let tenv, subst, typ = typ_exp tenv subst exp in
+                                          unify_with_tenv subst tenv typ etyp "element types of list must be same")
+        (tenv, subst) exps
+      in
+      (tenv, subst, ListT (Subst.subst_typ subst etyp))
+    end
+      
+  | TypedExpr (exp, typ) -> begin
+      let (tenv, subst, typ') = typ_exp tenv subst exp in
+      let tenv, subst =
+        unify_with_tenv subst tenv typ typ' "expression's type doesn't cossrespond with the specified type"
+      in
+      (tenv, subst, Subst.subst_typ subst typ)
+    end
+      
+  | MatchExp (exp, branches) -> begin
+      let tenv, subst, typ = typ_exp tenv subst exp in
+      let typscheme_env_of tenv = Env.map tenv (fun typ -> TypeScheme.make (TypVarSet.empty) typ) in
+      let rec iter subst cond_typ = function
+          [(pat, body)] -> begin
+            let btenv, subst = Patmatch.tmatch err subst cond_typ pat in
+            let btenv = typscheme_env_of btenv in
+            let btenv = Env.extend_by_env tenv btenv in
+            let (_, subst, btyp) = typ_exp btenv subst body in
+            (subst, btyp)
+          end
+        | (pat, body)::t -> begin
+            let (btenv, subst) = Patmatch.tmatch err subst cond_typ pat in
+            let btenv =  typscheme_env_of btenv in
+            let btenv = Env.extend_by_env tenv btenv in
+            let (_, subst, btyp) = typ_exp btenv subst body in
+            let subst, btyp' = iter subst cond_typ t in
+            match Subst.unify subst btyp btyp' with
+              Some subst -> (subst, Subst.subst_typ subst btyp)
+            | None       -> err @< Printf.sprintf "%s doesn't match with %s: all branch expresions must be same types"
+                                     (Type.pps_typ btyp) (Type.pps_typ btyp')
+          end
+        | _ -> assert false
+      in
+      let subst, btyp = iter subst typ branches in
+      (Subst.subst_tenv subst tenv, subst, btyp)
     end
         
 (* typing for let-rec *)

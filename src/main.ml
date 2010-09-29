@@ -20,7 +20,7 @@ let rec read_eval_print prompt fun_lexbuf tenv env err =
         print_string " : ";
         Type.pp_typ typ;
         print_string " = ";
-        Eval.pp_val v;
+        Value.pp_val v;
         print_newline ();
         read_eval_print prompt fun_lexbuf newtenv newenv err
       end
@@ -49,7 +49,7 @@ let refill_buffer ch =
   let body buf len = fill_buff buf 0 len in
   body
 
-let init_env = Env.extend (Env.extend Env.empty "i" @< Eval.IntV 1) "ii" @< Eval.IntV 2
+let init_env = Env.extend (Env.extend Env.empty "i" @< Value.IntV 1) "ii" @< Value.IntV 2
 let init_tenv = Env.empty
   
 let main () =

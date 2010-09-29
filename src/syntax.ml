@@ -7,6 +7,8 @@ type binop =
   | Div
   | Eq
   | Lt
+  | Cons
+      
 let str_of_binop = function
     Plus  -> "+"
   | Minus -> "-"
@@ -14,25 +16,44 @@ let str_of_binop = function
   | Div   -> "/"
   | Eq    -> "="
   | Lt    -> "<"
+  | Cons  -> "::"      
 
 type typvar = int
       
 type typ =
     IntT
   | BoolT
-  | FunT of typ * typ
   | TypVar of typvar
+  | FunT   of typ * typ
+  | ListT  of typ
+      
+type const =
+    CInt      of int
+  | CBool     of bool
+  | CNullList
+      
+(* pattern *)      
+type pat =
+    PVar   of id
+  | WildCard
+  | PConst of const
+  | As     of pat * id
+  | PList  of pat list
+  | PCons  of pat * pat
+  | POr    of pat * pat
       
 type exp =
     Var     of id
-  | IntLit  of int
-  | BoolLit of bool
+  | Const   of const
   | BinOp   of binop * exp * exp
   | Fun     of id * typ * exp
   | App     of exp * exp
   | Let     of id * exp * exp
   | IfExp   of exp * exp * exp
   | LetRec  of id * typ * exp * exp
+  | ListLit of exp list
+  | TypedExpr of exp * typ      
+  | MatchExp of exp * (pat * exp) list
       
 type program =
     Exp  of exp

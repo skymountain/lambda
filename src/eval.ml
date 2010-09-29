@@ -1,50 +1,47 @@
 open Misc
+open OptionMonad
 open Syntax
+open Value
 
 exception Eval_error of string
   
-type value =
-    IntV  of int
-  | BoolV of bool
-  | FunV  of id * exp * (id * value) Env.t ref
-      
 let err s = raise (Eval_error (Printf.sprintf "Runtime error: %s" s))
 
-(* pretty printer for value *)
-let pps_val = function
-    IntV i -> string_of_int i
-  | BoolV b -> string_of_bool b
-  | FunV _ -> "<fun>"
-
-let pp_val v =
-  print_string @< pps_val v
-
+(* evaluation for constant *)
+let eval_const = function
+    CInt i      -> IntV i
+  | CBool b     -> BoolV b
+  | CNullList _ -> ListV []
+    
 (* evaluation for binary operator *)
 let eval_binop = function
   (* airthmetic expression *)
-    (Plus, IntV vl, IntV vr) -> IntV (vl + vr)
-  | (Minus, IntV vl, IntV vr) -> IntV (vl - vr)
-  | (Mult, IntV vl, IntV vr) -> IntV (vl * vr)
-  | (Div, IntV vl, IntV vr) when vr <> 0  -> IntV (vl / vr)
-  | (Div, IntV _, IntV _)  -> err "division by zero isn't allowed"
-  | (Lt, IntV vl, IntV vr) -> BoolV (vl < vr)
+    Plus, IntV vl, IntV vr             -> IntV (vl + vr)
+  | Minus, IntV vl, IntV vr            -> IntV (vl - vr)
+  | Mult, IntV vl, IntV vr             -> IntV (vl * vr)
+  | Div, IntV vl, IntV vr when vr <> 0 -> IntV (vl / vr)
+  | Div, IntV _, IntV _                -> err "division by zero isn't allowed"
+  | Lt, IntV vl, IntV vr               -> BoolV (vl < vr)
   | (Plus as op, _, _) | (Minus as op, _, _) | (Mult as op, _, _) | (Div as op, _, _) | (Lt as op, _, _) ->
       err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
   (* equal *)
-  | (Eq, IntV v1, IntV v2) -> BoolV (v1 = v2)
-  | (Eq, BoolV v1, BoolV v2) -> BoolV (v1 = v2)
-  | (Eq, FunV _, FunV _) -> err "functions cannot be compared"
-  | (Eq, _, _) -> err "both arguments of = must be same type"
+  | Eq, IntV v1, IntV v2   -> BoolV (v1 = v2)
+  | Eq, BoolV v1, BoolV v2 -> BoolV (v1 = v2)
+  | Eq, FunV _, FunV _     -> err "functions cannot be compared"
+  | Eq, _, _               -> err @< Printf.sprintf "both arguments of %s must be same type" @< str_of_binop Eq
+  (* cons *)
+  | Cons, v, ListV vs      -> ListV (v::vs)
+  | Cons, _, _             -> err "right-side of %s must be list type" @< str_of_binop Cons
       
 (* evaluation for exp *)
 let rec eval_exp env = function
-    Var var ->
+    Var var -> begin
       begin match Env.lookup env var with
         None -> err @< Printf.sprintf "%s is not bound" var
       | Some v -> v
       end
-  | IntLit  i -> IntV i
-  | BoolLit b -> BoolV b
+    end
+  | Const c -> eval_const c
   | BinOp (op, el, er) -> eval_binop (op, eval_exp env el, eval_exp env er)
   | IfExp (cond, then_exp, else_exp) -> begin
       match eval_exp env cond with
@@ -52,18 +49,39 @@ let rec eval_exp env = function
       | _       -> err "value of conditional expression must be bool"
     end
   | Fun (var, _, body) -> FunV (var, body, ref env)
-  | App (f, act) ->
+  | App (f, act) -> begin
       begin match eval_exp env f, eval_exp env act with
         FunV (formal, body, env'), act ->
           eval_exp (Env.extend !env' formal act) body
       | _ -> err "not-function value is applied"
       end
-  | Let (var, exp, body) ->
+    end
+  | Let (var, exp, body) -> begin
       let v = eval_exp env exp in
       eval_exp (Env.extend env var v) body
+    end
   | LetRec (var, _, exp, body) -> begin
       let v = eval_rec env var exp in
       eval_exp (Env.extend env var v) body
+    end
+  | ListLit exps -> begin
+      let vs = List.map (eval_exp env) exps in
+      ListV vs
+    end
+  | TypedExpr (exp, _) -> eval_exp env exp
+  | MatchExp (exp, branches) -> begin
+      let v = eval_exp env exp in
+      let branch =
+        List.fold_left (fun acc (pat, body) ->
+                          match acc with
+                            Some _ -> acc
+                          | None -> 
+                              Patmatch.ematch v pat >>= fun pat_env -> Some (Env.extend_by_env env pat_env, body))
+          None branches
+      in
+      match branch with
+        Some (env, exp) -> eval_exp env exp
+      | None            -> err "match failure"
     end
       
 (* evaluation for recursive def *)

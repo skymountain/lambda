@@ -33,11 +33,13 @@ FILES[] =
 	common
 	env
 	syntax
+	value
+	type
 	parser
 	lexer
-	type
 	typeScheme
 	subst
+	patmatch
 	typing
 	eval
 	main

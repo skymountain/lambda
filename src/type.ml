@@ -11,6 +11,11 @@ let fresh_typvar =
   in
   f
 
+let of_const = function
+    CInt _ -> IntT
+  | CBool _ -> BoolT
+  | CNullList -> ListT (fresh_typvar ())
+    
 (* pretty printer for type *)
 let new_typvar typvar =
   
@@ -70,11 +75,18 @@ let pps_typ =
         (typvar_map, next_typvar, t1^" -> "^t2)
       end
     | TypVar (_ as id) -> begin
-        let new_typvar_map, next_typvar, s = pps_typvar typvar_map next_typvar id in
-        (new_typvar_map, next_typvar, "'"^s)
+        let typvar_map, next_typvar, s = pps_typvar typvar_map next_typvar id in
+        (typvar_map, next_typvar, "'"^s)
           end
+    | ListT typ -> begin
+        let typvar_map, next_typvar, t = pps_typ_inner typvar_map next_typvar typ in
+        let t = if is_funtyp_without_paren t then "("^t^")" else t in
+        (typvar_map, next_typvar, t^" list")
+      end
+
   in
   (fun typ -> let _, _, s = pps_typ_inner IntMap.empty "a" typ in s)
 
 let rec pp_typ typ =
   print_string @< pps_typ typ
+    

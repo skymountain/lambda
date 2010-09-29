@@ -6,22 +6,28 @@
   let err s = raise (Lexical_error ("Error: " ^ s))
     
   let reserv_words = [
-    ("let", Parser.LET);
-    ("in", Parser.IN);
-    ("int", Parser.INT);
-    ("bool", Parser.BOOL);
-    ("true", Parser.TRUE);
+    ("let",   Parser.LET);
+    ("in",    Parser.IN);
+    ("int",   Parser.INT);
+    ("bool",  Parser.BOOL);
+    ("true",  Parser.TRUE);
     ("false", Parser.FALSE);
-    ("if", Parser.IF);
-    ("then", Parser.THEN);
-    ("else", Parser.ELSE);
-    ("rec", Parser.REC);
+    ("if",    Parser.IF);
+    ("then",  Parser.THEN);
+    ("else",  Parser.ELSE);
+    ("rec",   Parser.REC);
+    ("match", Parser.MATCH);
+    ("with",  Parser.WITH);
+    ("begin", Parser.BEGIN);
+    ("end",   Parser.END);
+    ("as",    Parser.AS);
+    ("list",  Parser.LIST);
   ]
 }
 
 let alphabet  = ['a'-'z']
 let ident_top = ['a'-'z' '_']
-let ident_bdy = ['a'-'z' '_' '\'' '0' - '9']
+let ident_bdy = ['a'-'z' '_' '\'' '0'-'9']
 let blank = [' ' '\009' '\012' '\n']
 rule main = parse
   blank+ { main lexbuf }
@@ -36,8 +42,14 @@ rule main = parse
 | '='    { Parser.EQ }
 | ':'    { Parser.COLON }
 | '<'    { Parser.LT }
+| '['    { Parser.LSQPAREN }
+| ']'    { Parser.RSQPAREN }
+| '|'    { Parser.VBAR }
+| ';'    { Parser.SEMICOLON }
+| '_'    { Parser.UNDERBAR }
 | "->"   { Parser.RARROW }
 | ";;"   { Parser.SEMICOLON2 }
+| "::"   { Parser.COLON2 }
 | "(*"   { comment 0 lexbuf; main lexbuf }
 | "-"? [ '0'-'9' ]+
       {

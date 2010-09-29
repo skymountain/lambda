@@ -15,6 +15,7 @@ let freevars_in_typ =
       IntT | BoolT -> acc
     | FunT (ftyp, rtyp) -> iter ftyp acc +> iter rtyp
     | TypVar id -> TypVarSet.add id acc
+    | ListT etyp -> iter etyp acc
   in
   fun typ -> iter typ TypVarSet.empty
 
@@ -34,10 +35,11 @@ let instantiate (bound_vars, typ) =
   let rec iter acc = function
       (IntT | BoolT) as t -> (acc, t)
     | FunT (ftyp, rtyp) ->
-        let (acc, ftyp) = iter acc ftyp in
-        let (acc, rtyp) = iter acc rtyp in
+        let acc, ftyp = iter acc ftyp in
+        let acc, rtyp = iter acc rtyp in
         (acc, FunT (ftyp, rtyp))
-    | TypVar id ->
+    | ListT etyp -> let acc, etyp = iter acc etyp in (acc, ListT etyp)
+    | TypVar id -> begin
         try (acc, TypVarMap.find id acc) with
           Not_found -> begin
             let typvar =
@@ -46,6 +48,7 @@ let instantiate (bound_vars, typ) =
             in
             (TypVarMap.add id typvar acc, typvar)
           end
+      end
   in
   let (_, t) = iter TypVarMap.empty typ in
   t
