@@ -67,9 +67,6 @@ let unifyl subst eqs =
 let unify subst eq =
   unifyl subst [eq]
 
-let make_eq typ1 typ2 = (typ1, typ2)
-let make_eqs eqs : (typ * typ) list = eqs
-
 let rec subst_typvar subst id =
   let rec subst_fun src_typ id dst_typ eqs =
     match src_typ with
@@ -116,7 +113,59 @@ let rec subst_type_scheme subst typ_scheme =
    (bound_typvars, iter typ)
      
 let rec subst_tenv subst tenv =
-  Env.fold Env.empty
+  Env.fold tenv
     (fun acc (var, typ_scheme) ->
        Env.extend acc var @< subst_type_scheme subst typ_scheme)
-    tenv
+    Env.empty
+
+(* unify *)
+let equations_of subst = List.fold_left (fun acc (id, typ) -> (TyVar id, typ)::acc) [] subst
+
+let subst_in_equations id typ =
+  let rec iter src_typ =
+    match src_typ with
+    | TyFun (ftyp, rtyp)         -> TyFun (iter ftyp, iter rtyp)
+    | TyVar id'                  -> begin
+        if id = id' then typ
+        else src_typ
+      end
+    | TyVariant (typs, ident)    -> TyVariant (iter_list typs, ident)
+    | TyAlias (typ, typs, ident) -> TyAlias (iter typ, iter_list typs, ident)
+  and iter_list = (fun typs -> List.map iter typs)
+  in
+  List.map (fun (typ1, typ2) -> (iter typ1, iter typ2))
+
+let invalid_eq id typ =
+  match typ with
+    TyVar id' when id = id' -> false
+  | _ -> TypvarSet.mem id @< TypeScheme.freevars typ
+
+let unify_eqs eqs =
+  let rec unify_eq acc eqs = function
+    | TyVar id, (_ as typ) | (_ as typ), TyVar id ->
+        if invalid_eq id typ then None
+        else iter ((id, typ)::acc) @< subst_in_equations id typ eqs
+    | TyFun (ftyp1, rtyp1), TyFun (ftyp2, rtyp2) ->
+        iter acc @< (ftyp1, ftyp2)::(rtyp1, rtyp2)::eqs
+    | TyVariant (typs1, ident1), TyVariant (typs2, ident2) -> begin
+        if not (Ident.equal ident1 ident2) then None
+        else iter acc @< eqs @ List.combine typs1 typs2
+      end
+    | (TyAlias (atyp, _, _), typ) | (typ, TyAlias (atyp, _, _)) ->
+        iter acc ((atyp, typ)::eqs)
+    | (TyFun _|TyVariant _), _ -> None
+        
+  and iter acc = function
+      [] -> Some acc
+    | eq::eqs -> unify_eq acc eqs eq
+  in
+  (iter empty eqs) >>= fun l -> Some (List.rev l)
+  
+let unifyl subst eqs =
+  unify_eqs @< eqs @ (equations_of subst)
+
+let unify subst typ1 typ2 =
+  unifyl subst [(typ1, typ2)]
+
+let merge subst1 subst2 = 
+  unifyl subst1 @< equations_of subst2

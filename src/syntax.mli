@@ -27,7 +27,6 @@ type pat =
   | PWildCard
   | PConst of const
   | PAs    of pat * id
-  | PList  of pat list
   | PCons  of pat * pat
   | POr    of pat * pat
   | PConstr of string * pat list
@@ -41,7 +40,6 @@ type exp =
   | Let     of id * exp * exp
   | IfExp   of exp * exp * exp
   | LetRec  of id * typ * exp * exp
-  | ListLit of exp list
   | TypedExpr of exp * typ
   | MatchExp of exp * (pat * exp) list
   | Construct of string

@@ -6,6 +6,7 @@ open Value
 open Type
 open Typeexp
 open Printtype
+open Subst
 
 exception Matching_error of string
 let err s = raise (Matching_error (Printf.sprintf "Matching error: %s" s))
@@ -16,23 +17,13 @@ let ematch_const v c =
   | BoolV b, CBool b' when b = b' -> true
   | ListV [], CNullList _         -> true
   | _, _                          -> false
-  
+
 let rec ematch v = function
     PVar var -> Some (Env.extend Env.empty var v)
   | PWildCard -> Some Env.empty
   | PConst c -> if ematch_const v c then Some Env.empty else None
   | PAs (pat, var) -> 
       ematch v pat >>= (fun env -> Some (Env.extend env var v))
-  (* lefter pattern has higher precedence respect with environment *)
-  | PList pats -> begin
-      match v with
-        ListV vs when List.length vs = List.length pats -> begin
-          let envs = List.map (fun (pat, v) -> ematch v pat) @< List.combine pats vs in
-          OptionMonad.fold_left
-            (fun acc x -> x >>= (fun env -> Some (Env.extend_by_env acc env))) (Some Env.empty) envs
-        end
-      | _ -> None
-    end
   | PCons (epat, lpat) -> begin
       match v with
         ListV (x::xs) -> begin
@@ -59,12 +50,12 @@ let rec ematch v = function
     end
 
 let rec tmatch_const tctx subst typ = function
-    CInt _         -> Subst.unify subst @< Subst.make_eq typ PredefType.int_typ
-  | CBool _        -> Subst.unify subst @< Subst.make_eq typ PredefType.bool_typ
+    CInt _         -> Subst.unify subst typ PredefType.int_typ
+  | CBool _        -> Subst.unify subst typ PredefType.bool_typ
   | CNullList ltyp -> begin
       let ltyp', _ = PredefType.new_listyp () in
       let ltyp'' = map_typ tctx ltyp in
-      Subst.unifyl subst @< Subst.make_eqs [(ltyp', ltyp''); (ltyp', typ)]
+      Subst.unifyl subst [(ltyp', ltyp''); (ltyp', typ)]
     end
 
 let is_disjoint_env env env' =
@@ -117,10 +108,9 @@ let rec tmatch tctx subst typ pat : (string * TypeScheme.t) Env.t * Subst.t = ma
         None   -> (Env.extend tenv var @< TypeScheme.monotyp typ, subst)
       | Some _ -> err @< Printf.sprintf "variable %s is bound several times" var
     end
-  | PList _ -> assert false
   | PCons (epat, lpat) -> begin
       let ltyp, etyp = PredefType.new_listyp () in
-      match Subst.unify subst @< Subst.make_eq ltyp typ with
+      match Subst.unify subst ltyp typ with
       | None -> err "cons patterns match with only list type"
       | Some subst -> begin
           let etenv, subst = tmatch tctx subst etyp epat in
@@ -148,7 +138,7 @@ let rec tmatch tctx subst typ pat : (string * TypeScheme.t) Env.t * Subst.t = ma
           let ident = typdef.td_id in
           let typvars = fresh_typvar_list typdef.td_arity in
           let variant_typ = TyVariant (typvars, ident)in
-          let subst = match Subst.unify subst @< Subst.make_eq variant_typ typ with
+          let subst = match Subst.unify subst variant_typ typ with
             | None -> err @< Printf.sprintf "type %s doesn't match with type %s"
                              (pps_typ typ) (pps_typ variant_typ)
             | Some subst -> subst

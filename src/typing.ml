@@ -6,6 +6,7 @@ open Type
 open TypeContext
 open Typeexp
 open Printtype
+open OptionMonad
 
 let closure tctx subst typ =
   let tenv = Subst.subst_tenv subst @< TypeContext.typ_env tctx in
@@ -15,12 +16,12 @@ let closure tctx subst typ =
 let unify_err s = err s
 
 let unify subst typ1 typ2 msg =
-  match Subst.unify subst @< Subst.make_eq typ1 typ2 with
+  match Subst.unify subst typ1 typ2 with
     None       -> unify_err msg
   | Some subst -> subst
 
 let unifyl subst typs msg =
-  match Subst.unifyl subst @< Subst.make_eqs typs with
+  match Subst.unifyl subst typs with
     None       -> unify_err msg
   | Some subst -> subst
 
@@ -93,19 +94,6 @@ let rec typ_exp tctx subst = function
   | LetRec (var, typ, exp, body) -> begin
       let subst, typ = typ_letrec tctx subst var typ exp in
       typ_exp (add_var tctx var @< closure tctx subst typ) subst body
-    end
-
-  | ListLit exps -> begin
-      let subst, typs =
-        List.fold_left (fun (subst, typs) exp ->
-                          let subst, typ = typ_exp tctx subst exp in
-                          (subst, typ::typs))
-        (subst, []) exps
-      in
-      let typs = List.rev typs in
-      let typ, typs = match typs with typ::typs -> (typ, typs) | _ -> assert false in (* assume exps is not empty *)
-      let subst = List.fold_left (fun subst typ' -> unify subst typ typ' "element types of list must be same") subst typs in
-      (subst, PredefType.inst_list_typ @< Subst.subst_typ subst typ)
     end
 
   | TypedExpr (exp, typ) -> begin

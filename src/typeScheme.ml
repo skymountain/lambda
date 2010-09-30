@@ -4,7 +4,7 @@ open Type
 
 type t = TypvarSet.t * Type.typ
 
-let freevars_in_typ =
+let freevars =
   let rec iter typ acc =
     match typ with
     | TyFun (ftyp, rtyp)  -> iter ftyp acc +> iter rtyp
@@ -16,7 +16,7 @@ let freevars_in_typ =
   fun typ -> iter typ TypvarSet.empty
 
 let freevars_in_typ_scheme (bound_vars, typ) =
-  let free_vars = freevars_in_typ typ in
+  let free_vars = freevars typ in
   TypvarSet.diff free_vars bound_vars
 
 let freevars_in_typ_env tenv =
@@ -24,7 +24,7 @@ let freevars_in_typ_env tenv =
   @< Env.list_of tenv
 
 let closure typ tenv =
-  let bound_vars = TypvarSet.diff (freevars_in_typ typ) (freevars_in_typ_env tenv) in
+  let bound_vars = TypvarSet.diff (freevars typ) (freevars_in_typ_env tenv) in
   (bound_vars, typ)
 
 let instantiate (bound_vars, typ) =
@@ -61,11 +61,7 @@ let instantiate (bound_vars, typ) =
   let (_, t) = iter TypvarMap.empty typ in
   t
 
-let make bound_vars typ =
-  assert (TypvarSet.subset bound_vars @< freevars_in_typ typ);
-  (bound_vars, typ)
-
+let monotyp typ = (TypvarSet.empty, typ)
+    
 let bound_typvars = fst
 let typ = snd
-
-let monotyp typ = make TypvarSet.empty typ
