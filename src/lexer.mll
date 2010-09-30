@@ -29,19 +29,17 @@ let alphabet  = ['a'-'z']
 let ident_top = ['a'-'z' '_']
 let ident_bdy = ['a'-'z' '_' '\'' '0'-'9']
 let blank = [' ' '\009' '\012' '\n']
+
+let symbolchar = ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~' ]
+  
 rule main = parse
   blank+ { main lexbuf }
 | '\\'   { Parser.BACKSLA }
-| '+'    { Parser.PLUS }
-| '-'    { Parser.MINUS }
-| '*'    { Parser.ASTER }
-| '/'    { Parser.SLASH }
 | '('    { Parser.LPAREN }
 | ')'    { Parser.RPAREN }
 | '.'    { Parser.DOT }
 | '='    { Parser.EQ }
 | ':'    { Parser.COLON }
-| '<'    { Parser.LT }
 | '['    { Parser.LSQPAREN }
 | ']'    { Parser.RSQPAREN }
 | '|'    { Parser.VBAR }
@@ -50,21 +48,37 @@ rule main = parse
 | "->"   { Parser.RARROW }
 | ";;"   { Parser.SEMICOLON2 }
 | "::"   { Parser.COLON2 }
-| "(*"   { comment 0 lexbuf; main lexbuf }
+      
 | "-"? [ '0'-'9' ]+
       {
         let s = Lexing.lexeme lexbuf in
         try Parser.INTLIT (int_of_string s) with
           Failure _ -> err @< Printf.sprintf "%s exceeds the range of integer" s
       }
+      
+| ['!' '~' '?'] symbolchar*
+          { PREFIXOP (Lexing.lexeme lexbuf) }
+| ['=' '<' '>' '|' '&' '$'] symbolchar*
+          { INFIXOP0 (Lexing.lexeme lexbuf) }
+| ['@' '^'] symbolchar*
+          { INFIXOP1 (Lexing.lexeme lexbuf) }
+| ['+' '-'] symbolchar*
+          { INFIXOP2 (Lexing.lexeme lexbuf) }
+| ['*' '/' '%'] symbolchar*
+          { INFIXOP3 (Lexing.lexeme lexbuf) }
+| "**" symbolchar*
+          { INFIXOP4 (Lexing.lexeme lexbuf) }
+          
 | ident_top ident_bdy*
          {
            let s = Lexing.lexeme lexbuf in
            try List.assoc s reserv_words with
              Not_found -> IDENT s
          }
+| "(*"   { comment 0 lexbuf; main lexbuf }
 | eof    { EOF }
-| _      { err (Printf.sprintf "unknown token: %s" @< Lexing.lexeme lexbuf) }
+| _      { err (Printf.sprintf "unknown token %s" @< Lexing.lexeme lexbuf) }
+      
 and comment depth = parse
     "*)" { if depth = 0 then () else comment (depth-1) lexbuf }
   | "(*" { comment (depth+1) lexbuf }

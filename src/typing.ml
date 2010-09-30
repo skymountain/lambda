@@ -21,26 +21,17 @@ let unifyl_with_tenv subst tenv typs msg =
 
 (* typing for binary operator *)
 let typ_binop tenv subst typ1 typ2 =
+  let return typ (tenv, subst) = (tenv, subst, typ) in
   function
-    (Plus | Minus | Mult | Div) as op -> begin
-      let err_msg = Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op in
-      let tenv, subst = unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT)] err_msg in
-      (tenv, subst, IntT)
-    end
-  | Lt -> begin
-      let err_msg = Printf.sprintf "both arguments of %s must be integer" @< str_of_binop Lt in
-      let tenv, subst = unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT);] err_msg in
-      (tenv, subst, BoolT)
-    end
-  | Eq -> begin
-      let err_msg = Printf.sprintf "both arguments of %s must be same types" @< str_of_binop Eq in
-      let tenv, subst = unify_with_tenv subst tenv typ1 typ2 err_msg in
-      (tenv, subst , BoolT)
-    end
+    (Plus | Minus | Mult | Div) as op ->
+      return IntT @< unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT)]
+        @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
+  | Lt ->
+      return BoolT @< unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT);]
+        @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop Lt
   | Cons -> begin
       let etyp = Type.fresh_typvar () in
-      let ltyp = ListT etyp in
-      let tenv, subst = unify_with_tenv subst tenv typ2 ltyp
+      let tenv, subst = unify_with_tenv subst tenv typ2 (ListT etyp)
         @< Printf.sprintf "right-side of %s must be list type" @< str_of_binop Cons in
       let tenv, subst = unify_with_tenv subst tenv typ1 etyp
         @< Printf.sprintf "element types of %s must be same types" @< str_of_binop Cons in
@@ -70,8 +61,8 @@ let rec typ_exp tenv subst = function
       let tenv, subst, else_typ = typ_exp tenv subst else_exp in
       let tenv, subst = unify_with_tenv subst tenv then_typ else_typ "types of then and else expressions must be same" in
       (tenv, subst, Subst.subst_typ subst then_typ)
-
     end
+      
   | Fun (var, typ, body) -> begin
       let tenv, subst, rtyp = typ_exp (Env.extend tenv var @< TypeScheme.make TypVarSet.empty typ) subst body in
       let tenv = Env.remove tenv var in
