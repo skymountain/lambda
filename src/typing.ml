@@ -1,7 +1,7 @@
 open Misc
 open Syntax
 open Common
-open OptionMonad;;
+open OptionMonad
 
 exception Typing_error of string
 let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
@@ -64,7 +64,7 @@ let rec typ_exp tenv subst = function
     end
       
   | Fun (var, typ, body) -> begin
-      let tenv, subst, rtyp = typ_exp (Env.extend tenv var @< TypeScheme.make TypVarSet.empty typ) subst body in
+      let tenv, subst, rtyp = typ_exp (Env.extend tenv var @< TypeScheme.monotyp typ) subst body in
       let tenv = Env.remove tenv var in
       (tenv, subst, FunT (Subst.subst_typ subst typ, rtyp))
     end
@@ -91,16 +91,6 @@ let rec typ_exp tenv subst = function
       let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv) subst body in
       (Env.remove tenv var, subst, typ)
     end
-
-  | ListLit exps -> begin
-      let etyp = Type.fresh_typvar () in
-      let tenv, subst = List.fold_left (fun (tenv, subst) exp ->
-                                          let tenv, subst, typ = typ_exp tenv subst exp in
-                                          unify_with_tenv subst tenv typ etyp "element types of list must be same")
-        (tenv, subst) exps
-      in
-      (tenv, subst, ListT (Subst.subst_typ subst etyp))
-    end
       
   | TypedExpr (exp, typ) -> begin
       let (tenv, subst, typ') = typ_exp tenv subst exp in
@@ -111,31 +101,30 @@ let rec typ_exp tenv subst = function
     end
       
   | MatchExp (exp, branches) -> begin
+      let msg ctyp ptyp = Printf.sprintf "type of this pattern is %s, but is expected of type %s"
+                            (Type.pps_typ ptyp) (Type.pps_typ ctyp)
+      in
       let tenv, subst, typ = typ_exp tenv subst exp in
-      let typscheme_env_of tenv = Env.map tenv (fun typ -> TypeScheme.make (TypVarSet.empty) typ) in
-      let rec iter subst cond_typ = function
+      let rec iter tenv subst ctyp = function
           [(pat, body)] -> begin
-            let btenv, subst = Patmatch.tmatch err subst cond_typ pat in
-            let btenv = typscheme_env_of btenv in
-            let btenv = Env.extend_by_env tenv btenv in
+            let btenv, subst, ptyp = Patmatch.tmatch err tenv subst pat in
+            let btenv, subst = unify_with_tenv subst btenv ctyp ptyp @< msg ctyp ptyp in
             let (_, subst, btyp) = typ_exp btenv subst body in
-            (subst, btyp)
+            (Subst.subst_tenv subst tenv, subst, btyp)
           end
         | (pat, body)::t -> begin
-            let (btenv, subst) = Patmatch.tmatch err subst cond_typ pat in
-            let btenv =  typscheme_env_of btenv in
-            let btenv = Env.extend_by_env tenv btenv in
+            let btenv, subst, ptyp = Patmatch.tmatch err tenv subst pat in
+            let btenv, subst = unify_with_tenv subst btenv ctyp ptyp @< msg ctyp ptyp in
             let (_, subst, btyp) = typ_exp btenv subst body in
-            let subst, btyp' = iter subst cond_typ t in
+            let tenv, subst, btyp' = iter tenv subst btyp t in
             match Subst.unify subst btyp btyp' with
-              Some subst -> (subst, Subst.subst_typ subst btyp)
+              Some subst -> (Subst.subst_tenv subst tenv, subst, Subst.subst_typ subst btyp)
             | None       -> err @< Printf.sprintf "%s doesn't match with %s: all branch expresions must be same types"
                                      (Type.pps_typ btyp) (Type.pps_typ btyp')
           end
         | _ -> assert false
       in
-      let subst, btyp = iter subst typ branches in
-      (Subst.subst_tenv subst tenv, subst, btyp)
+      iter tenv subst typ branches
     end
         
 (* typing for let-rec *)
@@ -146,7 +135,7 @@ and typ_letrec tenv subst var funtyp exp =
     Fun _ -> begin
       let tenv, subst = unify_with_tenv subst tenv funtyp funtyp' "only values which are functions can be defined recursively" in
       let funtyp = Subst.subst_typ subst funtyp in
-      let tenv = Env.extend tenv var @< TypeScheme.make TypVarSet.empty funtyp in
+      let tenv = Env.extend tenv var @< TypeScheme.monotyp funtyp in
       let tenv, subst, etyp = typ_exp tenv subst exp in
       let tenv, subst = unify_with_tenv subst tenv funtyp etyp "expression's type doesn't cossrespond with a function type" in
       (Env.remove tenv var, subst, Subst.subst_typ subst etyp)

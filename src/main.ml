@@ -58,24 +58,25 @@ let init_env binds =
     binds (Env.empty, Env.empty)
     
 let (env, tenv) =
+  let eenv = ref Env.empty in
   init_env [
-    ("i", IntV 1, TypeScheme.make (TypVarSet.empty) @< IntT);
-    ("ii", IntV 2, TypeScheme.make (TypVarSet.empty) @< IntT);
+    ("i", IntV 1, TypeScheme.monotyp IntT);
+    ("ii", IntV 2, TypeScheme.monotyp IntT);
     
-    ("+", FunV ("x", Fun ("y", IntT, BinOp (Plus, Var "x", Var "y")), ref Env.empty),
-     TypeScheme.make (TypVarSet.empty) @< FunT (IntT, FunT(IntT, IntT)));
+    ("+", FunV ("x", Fun ("y", IntT, BinOp (Plus, Var "x", Var "y")), eenv),
+     TypeScheme.monotyp @< FunT (IntT, FunT(IntT, IntT)));
     
-    ("-", FunV ("x", Fun ("y", IntT, BinOp (Minus, Var "x", Var "y")), ref Env.empty),
-     TypeScheme.make (TypVarSet.empty) @< FunT (IntT, FunT(IntT, IntT)));
+    ("-", FunV ("x", Fun ("y", IntT, BinOp (Minus, Var "x", Var "y")), eenv),
+     TypeScheme.monotyp @< FunT (IntT, FunT(IntT, IntT)));
     
-    ("*", FunV ("x", Fun ("y", IntT, BinOp (Mult, Var "x", Var "y")), ref Env.empty),
-     TypeScheme.make (TypVarSet.empty) @< FunT (IntT, FunT(IntT, IntT)));
+    ("*", FunV ("x", Fun ("y", IntT, BinOp (Mult, Var "x", Var "y")), eenv),
+     TypeScheme.monotyp @< FunT (IntT, FunT(IntT, IntT)));
     
-    ("/", FunV ("x", Fun ("y", IntT, BinOp (Div, Var "x", Var "y")), ref Env.empty),
-     TypeScheme.make (TypVarSet.empty) @< FunT (IntT, FunT(IntT, IntT)));
+    ("/", FunV ("x", Fun ("y", IntT, BinOp (Div, Var "x", Var "y")), eenv),
+     TypeScheme.monotyp @< FunT (IntT, FunT(IntT, IntT)));
     
-    ("<", FunV ("x", Fun ("y", IntT, BinOp (Lt, Var "x", Var "y")), ref Env.empty),
-     TypeScheme.make (TypVarSet.empty) @< FunT (IntT, FunT(IntT, BoolT)));
+    ("<", FunV ("x", Fun ("y", IntT, BinOp (Lt, Var "x", Var "y")), eenv),
+     TypeScheme.monotyp @< FunT (IntT, FunT(IntT, BoolT)));
   ]
   
 let main () =

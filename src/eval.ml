@@ -59,10 +59,6 @@ let rec eval_exp env = function
       let v = eval_rec env var exp in
       eval_exp (Env.extend env var v) body
     end
-  | ListLit exps -> begin
-      let vs = List.map (eval_exp env) exps in
-      ListV vs
-    end
   | TypedExpr (exp, _) -> eval_exp env exp
   | MatchExp (exp, branches) -> begin
       let v = eval_exp env exp in

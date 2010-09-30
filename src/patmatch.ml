@@ -2,6 +2,10 @@ open OptionMonad
 open Misc
 open Syntax
 open Value
+open Subst
+
+let monotyp = TypeScheme.monotyp
+let typ = TypeScheme.typ
 
 module VarSet = Set.Make(String)
 
@@ -12,24 +16,12 @@ let ematch_const v c =
   | ListV [], CNullList           -> true
   | _, _                          -> false
 
-let list_contents = function ListV vs -> Some vs | _ -> None
-
 let rec ematch v = function
     PVar var -> Some (Env.extend Env.empty var v)
   | WildCard -> Some Env.empty
   | PConst c -> if ematch_const v c then Some Env.empty else None
   | As (pat, var) -> 
       ematch v pat >>= (fun env -> Some (Env.extend env var v))
-  (* lefter pattern has higher precedence respect with environment *)
-  | PList pats -> begin
-      match v with
-        ListV vs when List.length vs = List.length pats -> begin
-          let envs = List.map (fun (pat, v) -> ematch v pat) @< List.combine pats vs in
-          OptionMonad.fold_left
-            (fun acc x -> x >>= (fun env -> Some (Env.extend_by_env acc env))) (Some Env.empty) envs
-        end
-      | _ -> None
-    end
   | PCons (epat, lpat) -> begin
       match v with
         ListV (x::xs) -> begin
@@ -47,67 +39,42 @@ let rec ematch v = function
       
 let mem_env env = List.fold_left (fun acc (x, _) -> VarSet.add x acc) VarSet.empty @< Env.list_of env
   
-let is_disjoint_env env env' =
-  let mem, mem' = mem_env env, mem_env env' in
-  let card, card' = VarSet.cardinal mem, VarSet.cardinal mem' in
-  let sum = VarSet.cardinal @< VarSet.union mem mem' in
-  sum = card + card'
-      
-let rec tmatch err subst typ = function
-    PVar var -> (Env.extend Env.empty var typ, subst)
-  | WildCard -> (Env.empty, subst)
-  | PConst c -> begin
-      let ctyp = Type.of_const c in
-      match Subst.unify subst typ ctyp with
-        Some subst -> (Env.empty, subst)
-      | None       -> err @< Printf.sprintf "cannot unify in a pattern: expected %s, but %s"
-                               (Type.pps_typ typ) (Type.pps_typ ctyp)
-    end
+let rec tmatch err tenv subst = function
+    PVar var -> if Env.mem tenv var then err @< Printf.sprintf "variable %s is bound several times in a pattern" var
+    else
+      let typ = Type.fresh_typvar () in
+      (Env.extend tenv var @< monotyp typ, subst, typ)
+  | WildCard -> (tenv, subst, Type.fresh_typvar ())
+  | PConst c -> (tenv, subst, Type.of_const c)
   | As (pat, var) -> begin
-      let (tenv, subst) = tmatch err subst typ pat in
+      let tenv, subst, typ = tmatch err tenv subst pat in
       if Env.mem tenv var then
         err @< Printf.sprintf "variable %s is bound several times in a pattern" var
-      else
-        (Env.extend tenv var typ, subst)
-    end
-  | PList pats -> begin
-      match Subst.unify_list subst typ with
-        None -> err @< Printf.sprintf "list patterns match with only values of list type, not %s"
-                       @< Type.pps_typ @< Subst.subst_typ subst typ
-      | Some (subst, etyp) -> begin
-          List.fold_left
-            (fun (acc_tenv, acc_subst) pat ->
-               let tenv, subst = tmatch err acc_subst etyp pat in
-               if is_disjoint_env acc_tenv tenv then (Env.extend_by_env acc_tenv tenv, subst)
-               else err @< Printf.sprintf "variable %s is bound several times" "1")
-            (Env.empty, subst) pats
-        end
+      else (Env.extend tenv var @< monotyp typ, subst, typ)
     end
   | PCons (epat, lpat) -> begin
-      match Subst.unify_list subst typ with
-        None -> err @< Printf.sprintf "cons patterns match with only values of list type, not %s"
-                       @< Type.pps_typ @< Subst.subst_typ subst typ
-      | Some (subst, etyp) -> begin
-          let etenv, subst = tmatch err subst etyp epat in
-          let ltenv, subst = tmatch err subst (ListT etyp) lpat in
-          if is_disjoint_env etenv ltenv then (Env.extend_by_env etenv ltenv, subst)
-          else err @< Printf.sprintf "variable %s is bound several times" "1"
-        end
+      let tenv, subst, etyp = tmatch err tenv subst epat in
+      let tenv, subst, ltyp = tmatch err tenv subst lpat in
+      match unify subst ltyp @< ListT etyp with
+        Some subst -> (tenv, subst, subst_typ subst ltyp)
+      | None _     -> err @< Printf.sprintf "cons patterns match with only values of list type, not %s"
+                               @< Type.pps_typ @< subst_typ subst ltyp
     end
   | POr (lpat, rpat) -> begin
       let msg = "both sieds of or-pattern must have same bindings exactly" in
-      let ltenv, subst = tmatch err subst typ lpat in
-      let rtenv, subst = tmatch err subst typ rpat in
-      let member env = List.fold_left (fun acc (var, _) -> VarSet.add var acc) VarSet.empty @< Env.list_of env in
-      let lmem, rmem = member ltenv, member rtenv in
-      if VarSet.cardinal lmem = VarSet.cardinal rmem then
-        let subst_op = OptionMonad.fold_left
-          (fun acc var ->
-             Env.lookup ltenv var >>=
-               fun ltyp -> Env.lookup rtenv var >>=
-                 fun rtyp -> Subst.unify acc ltyp rtyp)
-          (Some subst) @< VarSet.elements lmem
+      let ltenv, subst, ltyp = tmatch err tenv subst lpat in
+      let rtenv, subst, rtyp = tmatch err tenv subst rpat in
+      let subst = unify subst ltyp rtyp in
+      let lmem, rmem = mem_env ltenv, mem_env rtenv in
+      if VarSet.cardinal lmem <> VarSet.cardinal rmem then err msg
+      else
+        let subst = OptionMonad.fold_left
+          (fun acc var -> match Env.lookup ltenv var, Env.lookup rtenv var with
+             Some ltyp, Some rtyp -> unify acc (typ ltyp) (typ rtyp)
+           | _, _                 -> None)
+          subst @< VarSet.elements lmem
         in
-        match subst_op with Some subst -> (ltenv, subst) | None -> err msg
-      else err msg
+        match subst with
+          Some subst -> (subst_tenv subst ltenv, subst, subst_typ subst ltyp)
+        | None -> err msg
     end

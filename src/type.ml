@@ -18,9 +18,7 @@ let of_const = function
     
 (* pretty printer for type *)
 let new_typvar typvar =
-  
   assert (String.length typvar > 0);
-  
   let len = String.length typvar in
   let rec iter s idx =
     match idx, s.[idx] with
@@ -56,14 +54,14 @@ let pps_typ =
     in
     iter 0 0
   in
-  let module IntMap = Map.Make(struct
-                                 type t = int
+  let module TypVarMap = Map.Make(struct
+                                 type t = typvar
                                  let compare = compare
                                end)
   in
   let pps_typvar typvar_map next_typvar id =
-    try (typvar_map, next_typvar, IntMap.find id typvar_map) with
-      Not_found -> (IntMap.add id next_typvar typvar_map, new_typvar next_typvar, next_typvar)
+    try (typvar_map, next_typvar, TypVarMap.find id typvar_map) with
+      Not_found -> (TypVarMap.add id next_typvar typvar_map, new_typvar next_typvar, next_typvar)
   in
   let rec pps_typ_inner typvar_map next_typvar = function
       IntT  -> (typvar_map, next_typvar, "int")
@@ -85,8 +83,7 @@ let pps_typ =
       end
 
   in
-  (fun typ -> let _, _, s = pps_typ_inner IntMap.empty "a" typ in s)
+  (fun typ -> let _, _, s = pps_typ_inner TypVarMap.empty "a" typ in s)
 
 let rec pp_typ typ =
   print_string @< pps_typ typ
-    

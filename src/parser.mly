@@ -90,11 +90,11 @@ ConstExpr:
 | LSQPAREN RSQPAREN { CNullList }
 
 ListExpr:
-  LSQPAREN SeqExpr RSQPAREN { ListLit $2 }
+  LSQPAREN SeqExpr RSQPAREN { $2 }
 
 SeqExpr:
-  Expr SEMICOLON SeqExpr { $1::$3 }
-| Expr  { [$1] }
+  Expr SEMICOLON SeqExpr { BinOp (Cons, $1, $3) }
+| Expr  { BinOp (Cons, $1, Const CNullList) }
   
 MatchExpr:
   MatchExpr_ VBAR MatchExpr   { $1::$3 }
@@ -108,14 +108,14 @@ PatternExpr:
 | Ident                          { PVar $1 }
 | ConstExpr                      { PConst $1 }
 | PatternExpr AS Ident           { As ($1, $3) }
-| LSQPAREN PListExpr RSQPAREN    { PList $2 }
+| LSQPAREN PListExpr RSQPAREN    { $2 }
 | PatternExpr COLON2 PatternExpr { PCons ($1, $3) }
 | PatternExpr VBAR PatternExpr   { POr ($1, $3) }
 | LPAREN PatternExpr RPAREN      { $2 }
       
 PListExpr:
-  PListExpr_ { [$1] }
-| PListExpr_ SEMICOLON PListExpr { $1::$3 }
+  PListExpr_ { PCons ($1, PConst CNullList) }
+| PListExpr_ SEMICOLON PListExpr { PCons ($1, $3) }
       
 PListExpr_:
   PatternExpr { $1 }

@@ -72,35 +72,22 @@ let subst_in_equations id typ =
   in
   List.map (fun (typ1, typ2) -> (iter typ1, iter typ2))
 
-let invalid_eq =
-  let rec contain_typvar id = function
-      IntT | BoolT -> false
-    | TypVar x -> id = x
-    | FunT (ftyp, rtyp) -> contain_typvar id ftyp || contain_typvar id rtyp
-    | ListT etyp -> contain_typvar id etyp
-  in
-  fun id typ ->
-    match typ with
-      TypVar id' when id = id' -> false
-    | _ -> contain_typvar id typ
+let invalid_eq id typ =
+  match typ with
+    TypVar id' when id = id' -> false
+  | _ -> TypVarSet.mem id @< TypeScheme.freevars typ
 
 let unify_eqs eqs =
   let rec unify_eq acc eqs = function
-      IntT, IntT | BoolT, BoolT ->
-        iter acc eqs
-    | TypVar id, (_ as typ) | (_ as typ), TypVar id -> begin
+      IntT, IntT | BoolT, BoolT -> iter acc eqs
+    | TypVar id, (_ as typ) | (_ as typ), TypVar id ->
         if invalid_eq id typ then None
-        else
-          let acc = (id, typ)::acc in
-          let eqs = subst_in_equations id typ eqs in
-          iter acc eqs
-      end
+        else iter ((id, typ)::acc) @< subst_in_equations id typ eqs
     | FunT (ftyp1, rtyp1), FunT (ftyp2, rtyp2) ->
         iter acc @< (ftyp1, ftyp2)::(rtyp1, rtyp2)::eqs
     | ListT etyp1, ListT etyp2 -> iter acc @< (etyp1, etyp2)::eqs
-        
     | (IntT|BoolT|FunT _|ListT _), _ -> None
-
+        
   and iter acc = function
       [] -> Some acc
     | eq::eqs -> unify_eq acc eqs eq
@@ -109,7 +96,6 @@ let unify_eqs eqs =
   
 let unifyl subst eqs =
   unify_eqs @< eqs @ (equations_of subst)
-  (* (iter empty @< eqs @ (equations_of subst)) >>= (fun l -> Some (List.rev l)) *)
 
 let unify subst typ1 typ2 =
   unifyl subst [(typ1, typ2)]

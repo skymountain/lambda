@@ -19,8 +19,8 @@ BYTE_ENABLED = $(not $(OCAMLOPT_EXISTS))
 # Various options
 #
 # OCAMLFLAGS    +=
-OCAMLCFLAGS   += -annot
-OCAMLOPTFLAGS += -annot
+OCAMLCFLAGS   += -annot -w a
+OCAMLOPTFLAGS += -annot -w a
 # OCAML_LINK_FLAGS +=
 # OCAML_BYTE_LINK_FLAGS +=
 # OCAML_NATIVE_LINK_FLAGS +=

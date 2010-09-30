@@ -9,7 +9,7 @@ module TypVarMap = Map.Make(struct
 
 type t = TypVarSet.t * typ
 
-let freevars_in_typ =
+let freevars =
   let rec iter typ acc =
     match typ with
       IntT | BoolT -> acc
@@ -20,7 +20,7 @@ let freevars_in_typ =
   fun typ -> iter typ TypVarSet.empty
 
 let freevars_in_typ_scheme (bound_vars, typ) =
-  let free_vars = freevars_in_typ typ in
+  let free_vars = freevars typ in
   TypVarSet.diff free_vars bound_vars
 
 let freevars_in_typ_env tenv =
@@ -28,7 +28,7 @@ let freevars_in_typ_env tenv =
   @< Env.list_of tenv
 
 let closure typ tenv =
-  let bound_vars = TypVarSet.diff (freevars_in_typ typ) (freevars_in_typ_env tenv) in
+  let bound_vars = TypVarSet.diff (freevars typ) (freevars_in_typ_env tenv) in
   (bound_vars, typ)
 
 let instantiate (bound_vars, typ) =
@@ -53,9 +53,11 @@ let instantiate (bound_vars, typ) =
   let (_, t) = iter TypVarMap.empty typ in
   t
 
-let make bound_vars typ =
-  assert (TypVarSet.subset bound_vars @< freevars_in_typ typ);
-  (bound_vars, typ)
+(* let make bound_vars typ = *)
+(*   assert (TypVarSet.subset bound_vars @< freevars_in_typ typ); *)
+(*   (bound_vars, typ) *)
 
+let monotyp typ = (TypVarSet.empty, typ)
+    
 let bound_typvars = fst
 let typ = snd
