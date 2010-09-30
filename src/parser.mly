@@ -22,10 +22,15 @@
 %token<int> INTLIT
 %token EOF
 
+%nonassoc IN
+%nonassoc LET
+%nonassoc BACKSLA WITH
+%nonassoc THEN
+%nonassoc ELSE
 %nonassoc AS /* below binary operator (COLON2) */
 %nonassoc below_VBAR
 %left VBAR
-%right RARROW
+%right RARROW DOT
 %left INFIXOP0 EQ
 %right INFIXOP1
 %right COLON2
@@ -45,40 +50,35 @@ main:
 | EOF { Syntax.EOF }
 
 Expr:
-  BACKSLA Ident COLON TypeExpr DOT Expr { Fun ($2, $4, $6) }
-| LET Ident EQ Expr IN Expr { Let ($2, $4, $6) }
+  SExpr { $1 }
+| AppExpr SExpr { App ($1, $2) }
+      
+| BACKSLA Ident COLON TypeExpr DOT Expr        { Fun ($2, $4, $6) }
+| LET Ident EQ Expr IN Expr                    { Let ($2, $4, $6) }
 | LET REC Ident COLON TypeExpr EQ Expr IN Expr { LetRec ($3, $5, $7, $9) }
-| IF Expr THEN Expr ELSE Expr { IfExp ($2, $4, $6) }
-| MATCH Expr WITH MatchExpr   { MatchExp ($2, $4) }
-| SExpr { $1 }
-
+| IF Expr THEN Expr ELSE Expr                  { IfExp ($2, $4, $6) }
+| MATCH Expr WITH MatchExpr                    { MatchExp ($2, $4) }
+      
+| Expr INFIXOP0 Expr { App (App (Var $2, $1), $3) }
+| Expr INFIXOP1 Expr { App (App (Var $2, $1), $3) }
+| Expr INFIXOP2 Expr { App (App (Var $2, $1), $3) }
+| Expr INFIXOP3 Expr { App (App (Var $2, $1), $3) }
+| Expr INFIXOP4 Expr { App (App (Var $2, $1), $3) }
+| Expr EQ       Expr { App (App (Var "=", $1), $3) }
+| Expr COLON2 Expr   { BinOp (Cons,  $1, $3) }
+      
 SExpr:
-  BinExpr { $1 }
-
-BinExpr:
-| BinExpr INFIXOP0 BinExpr { App (App (Var $2, $1), $3) }
-| BinExpr INFIXOP1 BinExpr { App (App (Var $2, $1), $3) }
-| BinExpr INFIXOP2 BinExpr { App (App (Var $2, $1), $3) }
-| BinExpr INFIXOP3 BinExpr { App (App (Var $2, $1), $3) }
-| BinExpr INFIXOP4 BinExpr { App (App (Var $2, $1), $3) }
-| BinExpr EQ       BinExpr { App (App (Var "=", $1), $3) }
-| BinExpr COLON2 BinExpr   { BinOp (Cons,  $1, $3) }
-| AppExpr                  { $1 }
-
-AppExpr:
-  AppExpr PrefixExpr { App ($1, $2) }
-| PrefixExpr { $1 }
-
-PrefixExpr:
-  PREFIXOP PrefixExpr { App (Var $1, $2) }
-| AtomExpr { $1 }
-
-AtomExpr:
-  ConstExpr          { Const $1 }
+  PREFIXOP SExpr     { App (Var $1, $2) }
+| ConstExpr          { Const $1 }
 | ListExpr           { $1 }
 | Ident              { Var $1 }
 | LPAREN Expr RPAREN { $2 }
-| LPAREN Expr COLON TypeExpr RPAREN { TypedExpr ($2, $4) }
+| LPAREN Expr COLON TypeExpr RPAREN
+                     { TypedExpr ($2, $4) }
+
+AppExpr:
+  AppExpr SExpr { App ($1, $2) }
+| SExpr { $1 }
       
 ConstExpr:
   INTLIT            { CInt $1 }
