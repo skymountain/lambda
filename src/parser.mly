@@ -4,7 +4,6 @@
 
 %token BACKSLA DOT SEMICOLON2
 %token LPAREN RPAREN  
-%token PLUS ASTER SLASH MINUS LT
 %token RARROW COLON
 %token EQ
 %token LET IN
@@ -17,6 +16,7 @@
 %token MATCH WITH VBAR
 %token UNDERBAR
 %token AS
+%token<Syntax.id> PREFIXOP INFIXOP0 INFIXOP1 INFIXOP2 INFIXOP3 INFIXOP4
   
 %token<Syntax.id> IDENT
 %token<int> INTLIT
@@ -25,12 +25,14 @@
 %nonassoc AS /* below binary operator (COLON2) */
 %nonassoc below_VBAR
 %left VBAR
-%left EQ LT
-%right COLON2
-%left PLUS MINUS
-%left ASTER SLASH
 %right RARROW
-%nonassoc LIST
+%left INFIXOP0 EQ
+%right INFIXOP1
+%right COLON2
+%left INFIXOP2
+%left INFIXOP3
+%right INFIXOP4
+%nonassoc LIST PREFIXOP
   
 %start main
 %type<Syntax.program> main
@@ -38,41 +40,43 @@
   
 main:
   Expr SEMICOLON2 { Exp $1 }
-| LET IDENT EQ Expr SEMICOLON2 { Decl ($2, $4) }
-| LET REC IDENT COLON TypeExpr EQ Expr SEMICOLON2 { DeclRec ($3, $5, $7) }
+| LET Ident EQ Expr SEMICOLON2 { Decl ($2, $4) }
+| LET REC Ident COLON TypeExpr EQ Expr SEMICOLON2 { DeclRec ($3, $5, $7) }
 | EOF { Syntax.EOF }
 
 Expr:
-  BACKSLA IDENT COLON TypeExpr DOT Expr { Fun ($2, $4, $6) }
-| LET IDENT EQ Expr IN Expr { Let ($2, $4, $6) }
-| LET REC IDENT COLON TypeExpr EQ Expr IN Expr { LetRec ($3, $5, $7, $9) }
+  BACKSLA Ident COLON TypeExpr DOT Expr { Fun ($2, $4, $6) }
+| LET Ident EQ Expr IN Expr { Let ($2, $4, $6) }
+| LET REC Ident COLON TypeExpr EQ Expr IN Expr { LetRec ($3, $5, $7, $9) }
 | IF Expr THEN Expr ELSE Expr { IfExp ($2, $4, $6) }
 | MATCH Expr WITH MatchExpr   { MatchExp ($2, $4) }
 | SExpr { $1 }
 
 SExpr:
   BinExpr { $1 }
-      
+
 BinExpr:
-  BinExpr PLUS   BinExpr { BinOp (Plus,  $1, $3) }
-| BinExpr MINUS  BinExpr { BinOp (Minus, $1, $3) }
-| BinExpr ASTER  BinExpr { BinOp (Mult,  $1, $3) }
-| BinExpr SLASH  BinExpr { BinOp (Div,   $1, $3) }
-| BinExpr LT     BinExpr { BinOp (Lt,    $1, $3) }
-| BinExpr COLON2 BinExpr { BinOp (Cons,  $1, $3) }
-| AppExpr                { $1 }
+| BinExpr INFIXOP0 BinExpr { App (App (Var $2, $1), $3) }
+| BinExpr INFIXOP1 BinExpr { App (App (Var $2, $1), $3) }
+| BinExpr INFIXOP2 BinExpr { App (App (Var $2, $1), $3) }
+| BinExpr INFIXOP3 BinExpr { App (App (Var $2, $1), $3) }
+| BinExpr INFIXOP4 BinExpr { App (App (Var $2, $1), $3) }
+| BinExpr EQ       BinExpr { App (App (Var "=", $1), $3) }
+| BinExpr COLON2 BinExpr   { BinOp (Cons,  $1, $3) }
+| AppExpr                  { $1 }
 
 AppExpr:
   AppExpr PrefixExpr { App ($1, $2) }
 | PrefixExpr { $1 }
 
 PrefixExpr:
-  AtomExpr { $1 }
+  PREFIXOP PrefixExpr { App (Var $1, $2) }
+| AtomExpr { $1 }
 
 AtomExpr:
   ConstExpr          { Const $1 }
 | ListExpr           { $1 }
-| IDENT              { Var $1 }
+| Ident              { Var $1 }
 | LPAREN Expr RPAREN { $2 }
 | LPAREN Expr COLON TypeExpr RPAREN { TypedExpr ($2, $4) }
       
@@ -99,9 +103,9 @@ MatchExpr_:
       
 PatternExpr:
   UNDERBAR                       { WildCard }
-| IDENT                          { PVar $1 }
+| Ident                          { PVar $1 }
 | ConstExpr                      { PConst $1 }
-| PatternExpr AS IDENT           { As ($1, $3) }
+| PatternExpr AS Ident           { As ($1, $3) }
 | LSQPAREN PListExpr RSQPAREN    { PList $2 }
 | PatternExpr COLON2 PatternExpr { PCons ($1, $3) }
 | PatternExpr VBAR PatternExpr   { POr ($1, $3) }
@@ -120,3 +124,16 @@ TypeExpr:
 | TypeExpr LIST            { ListT $1 }
 | TypeExpr RARROW TypeExpr { FunT ($1, $3) }
 | LPAREN TypeExpr RPAREN   { $2 }
+
+Ident:
+  IDENT                  { $1 }
+| LPAREN operator RPAREN { $2 }
+
+operator:
+  PREFIXOP { $1 }
+| INFIXOP0 { $1 }
+| INFIXOP1 { $1 }
+| INFIXOP2 { $1 }
+| INFIXOP3 { $1 }
+| INFIXOP4 { $1 }
+| EQ       { "=" }

@@ -1,4 +1,6 @@
 open Misc
+open Syntax
+open Value
 
 exception Exit
   
@@ -11,7 +13,7 @@ let rec read_eval_print prompt fun_lexbuf tenv env err =
   try 
     let prog = Parser.main Lexer.main @< Lexing.from_function fun_lexbuf in
     match prog with
-      Syntax.EOF -> (tenv, env)
+      EOF -> (tenv, env)
     | _   -> begin
         let (newtenv, id_typ, typ) = Typing.typing tenv prog in
         let (newenv, id ,v) = Eval.eval env prog in
@@ -20,7 +22,7 @@ let rec read_eval_print prompt fun_lexbuf tenv env err =
         print_string " : ";
         Type.pp_typ typ;
         print_string " = ";
-        Value.pp_val v;
+        pp_val v;
         print_newline ();
         read_eval_print prompt fun_lexbuf newtenv newenv err
       end
@@ -49,8 +51,30 @@ let refill_buffer ch =
   let body buf len = fill_buff buf 0 len in
   body
 
-let init_env = Env.extend (Env.extend Env.empty "i" @< Value.IntV 1) "ii" @< Value.IntV 2
-let init_tenv = Env.empty
+let init_env binds =
+  List.fold_right (fun (var, v, typ) (acc_env, acc_tenv) ->
+                     (Env.extend acc_env var v, Env.extend acc_tenv var typ))
+    binds (Env.empty, Env.empty)
+    
+let (env, tenv) =
+  init_env [
+    ("i", IntV 1, IntT); ("ii", IntV 2, IntT);
+    
+    ("+", FunV ("x", Fun ("y", IntT, BinOp (Plus, Var "x", Var "y")), ref Env.empty),
+     FunT (IntT, FunT(IntT, IntT)));
+    
+    ("-", FunV ("x", Fun ("y", IntT, BinOp (Minus, Var "x", Var "y")), ref Env.empty),
+     FunT (IntT, FunT(IntT, IntT)));
+    
+    ("*", FunV ("x", Fun ("y", IntT, BinOp (Mult, Var "x", Var "y")), ref Env.empty),
+     FunT (IntT, FunT(IntT, IntT)));
+    
+    ("/", FunV ("x", Fun ("y", IntT, BinOp (Div, Var "x", Var "y")), ref Env.empty),
+     FunT (IntT, FunT(IntT, IntT)));
+    
+    ("<", FunV ("x", Fun ("y", IntT, BinOp (Lt, Var "x", Var "y")), ref Env.empty),
+     FunT (IntT, FunT(IntT, BoolT)));
+  ]
   
 let main () =
   let files = ref [] in
@@ -76,7 +100,7 @@ let main () =
           None -> ()
         | Some file -> p_msg @< Printf.sprintf "will load %s" file);
        read_eval_print prompt (refill_buffer ichann) tenv env err)
-    (init_tenv, init_env)
+    (tenv, env)
     ins
 
 let _ = try ignore @< main () with Exit -> ();
