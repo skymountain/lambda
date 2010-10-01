@@ -127,7 +127,7 @@ let subst_in_equations id typ =
 
 let invalid_eq id typ =
   match typ with
-    TyVar id' when id = id' -> false
+  | TyVar id' when id = id' -> false
   | _ -> TypvarSet.mem id @< TypeScheme.freevars typ
 
 let unify_eqs eqs =
