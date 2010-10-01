@@ -80,13 +80,13 @@ let (env, tenv) =
      TypeScheme.monotyp @< FunT (IntT, FunT(IntT, BoolT)));
 
     ("ref", FunV ("x", RefExp (Var "x"), eenv),
-     let ctyp = Type.fresh_typvar () in TypeScheme.closure (FunT (ctyp, RefT ctyp)) tenv);
+     let ctyp = Type.fresh_typvar () in TypeScheme.closure (FunT (ctyp, RefT ctyp)) tenv (Fun ("x", ctyp, Var "x")));
 
     ("!", FunV ("x", UnaryOp (Deref, Var "x"), eenv),
-     let ctyp = Type.fresh_typvar () in TypeScheme.closure (FunT (RefT ctyp, ctyp)) tenv);
+     let ctyp = Type.fresh_typvar () in TypeScheme.closure (FunT (RefT ctyp, ctyp)) tenv (Fun ("x", ctyp, Var "x")));
 
     (":=", FunV ("x", Fun ("y", Type.fresh_typvar (), BinOp (Assign, Var "x", Var "y")), eenv),
-     let ctyp = Type.fresh_typvar () in TypeScheme.closure (FunT (RefT ctyp, FunT (ctyp, ctyp))) tenv);
+     let ctyp = Type.fresh_typvar () in TypeScheme.closure (FunT (RefT ctyp, FunT (ctyp, ctyp))) tenv (Fun ("x", ctyp, Var "x")));
   ]
   
 let main () =

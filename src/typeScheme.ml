@@ -28,9 +28,17 @@ let freevars_in_typ_env tenv =
   List.fold_left (fun acc (_, t) -> TypVarSet.union acc @< freevars_in_typ_scheme t) TypVarSet.empty
   @< Env.list_of tenv
 
-let closure typ tenv =
-  let bound_vars = TypVarSet.diff (freevars typ) (freevars_in_typ_env tenv) in
-  (bound_vars, typ)
+let rec is_syntactic_value = function
+    Var _ | Const _ | Fun _ -> true
+  | TypedExpr (exp, _) -> is_syntactic_value exp
+  | _ -> false
+    
+let closure typ tenv exp =
+  let typvars = 
+    if is_syntactic_value exp then TypVarSet.diff (freevars typ) (freevars_in_typ_env tenv)
+    else TypVarSet.empty
+  in
+  (typvars, typ)
 
 let instantiate (bound_vars, typ) =
   let rec iter acc = function

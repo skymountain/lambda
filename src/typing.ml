@@ -91,19 +91,22 @@ let rec typ_exp tenv subst = function
       let tenv, subst = unify_with_tenv subst tenv funtyp funtyp' "only function type can be applied" in
       let tenv, subst, atyp = typ_exp tenv subst exp2 in
       let ftyp = Subst.subst_typ subst ftyp in
-      let tenv, subst = unify_with_tenv subst tenv ftyp atyp "type of actual argument must correspond with one of formal argument" in
+      let tenv, subst = unify_with_tenv subst tenv ftyp atyp
+        @< Printf.sprintf "type of actual argument %s must correspond with one of formal argument %s"
+        (Type.pps_typ atyp) (Type.pps_typ @< Subst.subst_typ subst rtyp)
+      in
       (tenv, subst, Subst.subst_typ subst rtyp)
     end
       
   | Let (var, exp, body) -> begin
       let tenv, subst, typ = typ_exp tenv subst exp in
-      let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv) subst body in
+      let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv exp) subst body in
       (Env.remove tenv var, subst, typ)
     end
       
   | LetRec (var, typ, exp, body) -> begin
       let tenv, subst, typ = typ_letrec tenv subst var typ exp in
-      let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv) subst body in
+      let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv exp) subst body in
       (Env.remove tenv var, subst, typ)
     end
       
@@ -165,12 +168,12 @@ and typ_letrec tenv subst var funtyp exp =
 (* typing for program *)
 let typing tenv =
   
-  let return tenv var (_, _, typ) =
-    Env.extend tenv var @< TypeScheme.closure typ tenv, var, typ
+  let return var exp (tenv, _, typ) =
+    (Env.extend tenv var @< TypeScheme.closure typ tenv exp, var, typ)
   in
   
   function
-    Exp exp -> return tenv "it" @< typ_exp tenv Subst.empty exp
-  | Decl (var, exp) -> return tenv var @< typ_exp tenv Subst.empty exp
-  | DeclRec (var, typ, exp) -> return tenv var @< typ_letrec tenv Subst.empty var typ exp
+    Exp exp -> return "it" exp @< typ_exp tenv Subst.empty exp
+  | Decl (var, exp) -> return var exp @< typ_exp tenv Subst.empty exp
+  | DeclRec (var, typ, exp) -> return var exp @< typ_letrec tenv Subst.empty var typ exp
   | EOF -> assert false
