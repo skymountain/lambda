@@ -36,6 +36,8 @@ let typ_const tctx subst = function
       (subst, Subst.subst_typ subst ltyp)
     end
 
+let return typ (tenv, subst) = (tenv, subst, Subst.subst_typ subst typ)
+      
 (* typing for binary operator *)
 let typ_binop tctx subst typ1 typ2 = function
     (BPlus | BMinus | BMult | BDiv | BLt ) -> assert false
