@@ -19,24 +19,21 @@ let unifyl_with_tenv subst tenv typs msg =
     None       -> unify_err msg
   | Some subst -> (Subst.subst_tenv subst tenv, subst)
 
+let return typ (tenv, subst) = (tenv, subst, Subst.subst_typ subst typ)
+      
 (* typing for binary operator *)
-let typ_binop tenv subst typ1 typ2 =
-  let return typ (tenv, subst) = (tenv, subst, typ) in
-  function
+let typ_binop tenv subst typ1 typ2 = function
     (Plus | Minus | Mult | Div) as op ->
       return IntT @< unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT)]
         @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
   | Lt ->
       return BoolT @< unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT);]
         @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop Lt
-  | Cons -> begin
-      let etyp = Type.fresh_typvar () in
-      let tenv, subst = unify_with_tenv subst tenv typ2 (ListT etyp)
-        @< Printf.sprintf "right-side of %s must be list type" @< str_of_binop Cons in
-      let tenv, subst = unify_with_tenv subst tenv typ1 etyp
-        @< Printf.sprintf "element types of %s must be same types" @< str_of_binop Cons in
-      (tenv, subst, ListT (Subst.subst_typ subst etyp))
-    end
+  | Cons ->
+      return typ2 @<
+        unify_with_tenv subst tenv typ2 (ListT typ1)
+        @< Printf.sprintf "right-side of %s must be type %s"
+        (str_of_binop Cons) (Type.pps_typ (ListT typ1))
       
 (* typing for exp *)
 let rec typ_exp tenv subst = function
