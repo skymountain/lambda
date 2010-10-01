@@ -122,18 +122,8 @@ let rec subst_tenv subst tenv =
 let equations_of subst = List.fold_left (fun acc (id, typ) -> (TyVar id, typ)::acc) [] subst
 
 let subst_in_equations id typ =
-  let rec iter src_typ =
-    match src_typ with
-    | TyFun (ftyp, rtyp)         -> TyFun (iter ftyp, iter rtyp)
-    | TyVar id'                  -> begin
-        if id = id' then typ
-        else src_typ
-      end
-    | TyVariant (typs, ident)    -> TyVariant (iter_list typs, ident)
-    | TyAlias (typ, typs, ident) -> TyAlias (iter typ, iter_list typs, ident)
-  and iter_list = (fun typs -> List.map iter typs)
-  in
-  List.map (fun (typ1, typ2) -> (iter typ1, iter typ2))
+  let subst = [(id, typ)] in
+  List.map (fun (typ1, typ2) -> (subst_typ subst typ1, subst_typ subst typ2))
 
 let invalid_eq id typ =
   match typ with
