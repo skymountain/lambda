@@ -3,6 +3,8 @@ open Syntax
 open Common
 open OptionMonad
 
+let pps_typ = Printtyp.pps_typ
+
 exception Typing_error of string
 let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
 
@@ -33,7 +35,7 @@ let typ_binop tenv subst typ1 typ2 = function
       return typ2 @<
         unify_with_tenv subst tenv typ2 (ListT typ1)
         @< Printf.sprintf "right-side of %s must be type %s"
-        (str_of_binop Cons) (Type.pps_typ (ListT typ1))
+        (str_of_binop Cons) (pps_typ (ListT typ1))
       
 (* typing for exp *)
 let rec typ_exp tenv subst = function
@@ -99,7 +101,7 @@ let rec typ_exp tenv subst = function
       
   | MatchExp (exp, branches) -> begin
       let msg ctyp ptyp = Printf.sprintf "type of this pattern is %s, but is expected of type %s"
-                            (Type.pps_typ ptyp) (Type.pps_typ ctyp)
+                            (pps_typ ptyp) (pps_typ ctyp)
       in
       let tenv, subst, typ = typ_exp tenv subst exp in
       let rec iter tenv subst ctyp = function
@@ -117,7 +119,7 @@ let rec typ_exp tenv subst = function
             match Subst.unify subst btyp btyp' with
               Some subst -> (Subst.subst_tenv subst tenv, subst, Subst.subst_typ subst btyp)
             | None       -> err @< Printf.sprintf "%s doesn't match with %s: all branch expresions must be same types"
-                                     (Type.pps_typ btyp) (Type.pps_typ btyp')
+                                     (pps_typ btyp) (pps_typ btyp')
           end
         | _ -> assert false
       in
