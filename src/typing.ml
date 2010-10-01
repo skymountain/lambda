@@ -3,6 +3,8 @@ open Syntax
 open Common
 open OptionMonad
 
+let pps_typ = Printtyp.pps_typ
+
 exception Typing_error of string
 let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
 
@@ -41,12 +43,12 @@ let typ_binop tenv subst typ1 typ2 = function
       return typ2 @<
         unify_with_tenv subst tenv typ2 (ListT typ1)
         @< Printf.sprintf "right-side of %s must be type %s"
-        (str_of_binop Cons) (Type.pps_typ (ListT typ1))
+        (str_of_binop Cons) (pps_typ (ListT typ1))
   | Assign ->
       return typ2 @<
         unify_with_tenv subst tenv typ1 (RefT typ2)
         @< Printf.sprintf "left-side type of %s is %s, but was expected of type typ %s"
-        (str_of_binop Assign) (Type.pps_typ typ1) (Type.pps_typ @< RefT typ2)
+        (str_of_binop Assign) (pps_typ typ1) (pps_typ @< RefT typ2)
       
 (* typing for exp *)
 let rec typ_exp tenv subst = function
@@ -93,7 +95,7 @@ let rec typ_exp tenv subst = function
       let ftyp = Subst.subst_typ subst ftyp in
       let tenv, subst = unify_with_tenv subst tenv ftyp atyp
         @< Printf.sprintf "type of actual argument %s must correspond with one of formal argument %s"
-        (Type.pps_typ atyp) (Type.pps_typ @< Subst.subst_typ subst rtyp)
+        (pps_typ atyp) (pps_typ @< Subst.subst_typ subst rtyp)
       in
       (tenv, subst, Subst.subst_typ subst rtyp)
     end
@@ -120,7 +122,7 @@ let rec typ_exp tenv subst = function
       
   | MatchExp (exp, branches) -> begin
       let msg ctyp ptyp = Printf.sprintf "type of this pattern is %s, but is expected of type %s"
-                            (Type.pps_typ ptyp) (Type.pps_typ ctyp)
+                            (pps_typ ptyp) (pps_typ ctyp)
       in
       let tenv, subst, typ = typ_exp tenv subst exp in
       let rec iter tenv subst ctyp = function
@@ -138,7 +140,7 @@ let rec typ_exp tenv subst = function
             match Subst.unify subst btyp btyp' with
               Some subst -> (Subst.subst_tenv subst tenv, subst, Subst.subst_typ subst btyp)
             | None       -> err @< Printf.sprintf "%s doesn't match with %s: all branch expresions must be same types"
-                                     (Type.pps_typ btyp) (Type.pps_typ btyp')
+                                     (pps_typ btyp) (pps_typ btyp')
           end
         | _ -> assert false
       in
@@ -169,7 +171,8 @@ and typ_letrec tenv subst var funtyp exp =
 let typing tenv =
   
   let return var exp (tenv, _, typ) =
-    (Env.extend tenv var @< TypeScheme.closure typ tenv exp, var, typ)
+    let typ = TypeScheme.closure typ tenv exp in
+    Env.extend tenv var typ, var, typ
   in
   
   function

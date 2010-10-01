@@ -58,7 +58,7 @@ let rec tmatch err tenv subst = function
       match unify subst ltyp @< ListT etyp with
         Some subst -> (tenv, subst, subst_typ subst ltyp)
       | None       -> err @< Printf.sprintf "cons patterns match with only values of list type, not %s"
-                               @< Type.pps_typ @< subst_typ subst ltyp
+                               @< Printtyp.pps_typ @< subst_typ subst ltyp
     end
   | POr (lpat, rpat) -> begin
       let msg = "both sieds of or-pattern must have same bindings exactly" in

@@ -35,9 +35,10 @@ FILES[] =
 	syntax
 	value
 	type
+	typeScheme
+	printtyp
 	parser
 	lexer
-	typeScheme
 	subst
 	patmatch
 	typing
