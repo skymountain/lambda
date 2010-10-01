@@ -144,13 +144,13 @@ and typ_letrec tenv subst var funtyp exp =
 (* typing for program *)
 let typing tenv =
   
-  let return tenv var (_, _, typ) =
+  let return var (tenv, _, typ) =
     let typ = TypeScheme.closure typ tenv in
     Env.extend tenv var typ, var, typ
   in
   
   function
-    Exp exp -> return tenv "it" @< typ_exp tenv Subst.empty exp
-  | Decl (var, exp) -> return tenv var @< typ_exp tenv Subst.empty exp
-  | DeclRec (var, typ, exp) -> return tenv var @< typ_letrec tenv Subst.empty var typ exp
+    Exp exp -> return "it" @< typ_exp tenv Subst.empty exp
+  | Decl (var, exp) -> return var @< typ_exp tenv Subst.empty exp
+  | DeclRec (var, typ, exp) -> return var @< typ_letrec tenv Subst.empty var typ exp
   | EOF -> assert false
