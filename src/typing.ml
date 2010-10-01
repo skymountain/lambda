@@ -30,22 +30,18 @@ let typ_unaryop tenv subst typ = function
     end
       
 (* typing for binary operator *)
-let typ_binop tenv subst typ1 typ2 =
-  function
+let typ_binop tenv subst typ1 typ2 = function
     (Plus | Minus | Mult | Div) as op ->
       return IntT @< unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT)]
         @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
   | Lt ->
       return BoolT @< unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT);]
         @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop Lt
-  | Cons -> begin
-      let etyp = Type.fresh_typvar () in
-      let tenv, subst = unify_with_tenv subst tenv typ2 (ListT etyp)
-        @< Printf.sprintf "right-side of %s must be list type" @< str_of_binop Cons in
-      return (ListT etyp) @<
-        unify_with_tenv subst tenv typ1 etyp
-        @< Printf.sprintf "element types of %s must be same types" @< str_of_binop Cons
-    end
+  | Cons ->
+      return typ2 @<
+        unify_with_tenv subst tenv typ2 (ListT typ1)
+        @< Printf.sprintf "right-side of %s must be type %s"
+        (str_of_binop Cons) (Type.pps_typ (ListT typ1))
   | Assign ->
       return typ2 @<
         unify_with_tenv subst tenv typ1 (RefT typ2)
