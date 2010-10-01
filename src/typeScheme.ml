@@ -32,11 +32,17 @@ let rec is_syntactic_value = function
     Var _ | Const _ | Fun _ -> true
   | TypedExpr (exp, _) -> is_syntactic_value exp
   | _ -> false
-    
+
+let rec danger_vars = function
+    IntT | BoolT | TypVar _ -> TypVarSet.empty
+  | FunT (ltyp, rtyp) -> TypVarSet.union (freevars ltyp) @< danger_vars rtyp
+  | ListT typ -> danger_vars typ
+  | RefT typ -> freevars typ
+      
 let closure typ tenv exp =
   let typvars = 
     if is_syntactic_value exp then TypVarSet.diff (freevars typ) (freevars_in_typ_env tenv)
-    else TypVarSet.empty
+    else TypVarSet.diff (TypVarSet.diff (freevars typ) (danger_vars typ)) (freevars_in_typ_env tenv)
   in
   (typvars, typ)
 
