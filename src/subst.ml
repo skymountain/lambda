@@ -51,11 +51,11 @@ let rec subst_type_scheme subst typ_scheme =
    (bound_typvars, iter typ)
      
 let rec subst_tenv subst tenv =
-  Env.fold tenv 
-    (fun acc (var, typ_scheme) ->
-       Env.extend acc var @< subst_type_scheme subst typ_scheme)
-    Env.empty
-
+  let subst = subst_type_scheme subst in
+  Env.extendl Env.empty @< List.rev @<
+    Env.fold tenv 
+    (fun acc (var, typ_scheme) -> (var, subst subst typ_scheme)::acc) []
+    
 (* unify *)
 let equations_of subst = List.fold_left (fun acc (id, typ) -> (TypVar id, typ)::acc) [] subst
 
