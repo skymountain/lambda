@@ -16,12 +16,12 @@ let rec read_eval_print prompt fun_lexbuf tenv env err =
     match prog with
       EOF -> (tenv, env)
     | _   -> begin
-        let (newtenv, id_typ, typ) = Typing.typing tenv prog in
+        let (newtenv, id_typ, typ_scheme) = Typing.typing tenv prog in
         let (newenv, id ,v) = Eval.eval env prog in
         assert (id_typ = id);
         print_string @< "val "^id;
         print_string " : ";
-        Printtyp.pp_typscheme @< TypeScheme.closure typ newtenv;
+        Printtyp.pp_typscheme typ_scheme;
         print_string " = ";
         pp_val v;
         print_newline ();

@@ -145,7 +145,8 @@ and typ_letrec tenv subst var funtyp exp =
 let typing tenv =
   
   let return tenv var (_, _, typ) =
-    Env.extend tenv var @< TypeScheme.closure typ tenv, var, typ
+    let typ = TypeScheme.closure typ tenv in
+    Env.extend tenv var typ, var, typ
   in
   
   function
