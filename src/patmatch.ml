@@ -79,7 +79,7 @@ let unify_env subst env env' =
     Subst.unifyl subst @< List.combine typs typs'
 
 let typ_of_const tctx = function
-    CInt _      -> PredefType.int_typ
+  | CInt _      -> PredefType.int_typ
   | CBool _     -> PredefType.bool_typ
   | CNullList t -> map_typ tctx t
 
