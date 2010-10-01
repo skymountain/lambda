@@ -6,6 +6,7 @@ type t =
   | BoolV of bool
   | FunV  of id * exp * (id * t) Env.t ref
   | ListV of t list
+  | RefV  of t ref
       
 (* pretty printer for value *)
 let rec pps_val = function
@@ -13,6 +14,7 @@ let rec pps_val = function
   | BoolV b  -> string_of_bool b
   | FunV _   -> "<fun>"
   | ListV vs -> Printf.sprintf "[%s]" @< String.concat "; " @< List.map pps_val vs
+  | RefV v   -> Printf.sprintf "%s ref" @< pps_val !v
       
 let pp_val v =
   print_string @< pps_val v

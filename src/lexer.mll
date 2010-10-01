@@ -48,6 +48,7 @@ rule main = parse
 | "->"   { Parser.RARROW }
 | ";;"   { Parser.SEMICOLON2 }
 | "::"   { Parser.COLON2 }
+| ":="   { Parser.COLONEQ }
       
 | "-"? [ '0'-'9' ]+
       {

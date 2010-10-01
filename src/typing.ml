@@ -19,9 +19,18 @@ let unifyl_with_tenv subst tenv typs msg =
     None       -> unify_err msg
   | Some subst -> (Subst.subst_tenv subst tenv, subst)
 
+let return typ (tenv, subst) = (tenv, subst, Subst.subst_typ subst typ)
+      
+(* typing for unary operator *)
+let typ_unaryop tenv subst typ = function
+    Deref -> begin
+      let ctyp = Type.fresh_typvar () in
+      return ctyp @< unify_with_tenv subst tenv typ (RefT ctyp)
+        @< Printf.sprintf "argument of %s must be reference type" @< str_of_unaryop Deref
+    end
+      
 (* typing for binary operator *)
 let typ_binop tenv subst typ1 typ2 =
-  let return typ (tenv, subst) = (tenv, subst, typ) in
   function
     (Plus | Minus | Mult | Div) as op ->
       return IntT @< unifyl_with_tenv subst tenv [(typ1, IntT); (typ2, IntT)]
@@ -33,10 +42,15 @@ let typ_binop tenv subst typ1 typ2 =
       let etyp = Type.fresh_typvar () in
       let tenv, subst = unify_with_tenv subst tenv typ2 (ListT etyp)
         @< Printf.sprintf "right-side of %s must be list type" @< str_of_binop Cons in
-      let tenv, subst = unify_with_tenv subst tenv typ1 etyp
-        @< Printf.sprintf "element types of %s must be same types" @< str_of_binop Cons in
-      (tenv, subst, ListT (Subst.subst_typ subst etyp))
+      return (ListT etyp) @<
+        unify_with_tenv subst tenv typ1 etyp
+        @< Printf.sprintf "element types of %s must be same types" @< str_of_binop Cons
     end
+  | Assign ->
+      return typ2 @<
+        unify_with_tenv subst tenv typ1 (RefT typ2)
+        @< Printf.sprintf "left-side type of %s is %s, but was expected of type typ %s"
+        (str_of_binop Assign) (Type.pps_typ typ1) (Type.pps_typ @< RefT typ2)
       
 (* typing for exp *)
 let rec typ_exp tenv subst = function
@@ -47,6 +61,11 @@ let rec typ_exp tenv subst = function
     end
 
   | Const c -> (tenv, subst, Type.of_const c)
+
+  | UnaryOp (op, exp) -> begin
+      let tenv, subst, typ = typ_exp tenv subst exp in
+      typ_unaryop tenv subst typ op
+    end
       
   | BinOp (op, exp1, exp2) -> begin
       let tenv, subst, typ1 = typ_exp tenv subst exp1 in
@@ -126,7 +145,12 @@ let rec typ_exp tenv subst = function
       in
       iter tenv subst typ branches
     end
-        
+
+  | RefExp exp -> begin
+      let tenv, subst, typ = typ_exp tenv subst exp in
+      (tenv, subst, RefT typ)
+    end
+      
 (* typing for let-rec *)
 and typ_letrec tenv subst var funtyp exp =
   let ftyp, rtyp = Type.fresh_typvar (), Type.fresh_typvar () in

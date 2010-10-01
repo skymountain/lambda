@@ -20,7 +20,8 @@ let rec subst_typvar subst id =
     | FunT (ftyp, rtyp) ->
         FunT (subst_per_eq ftyp id dst_typ eqs, subst_per_eq rtyp id dst_typ eqs)
     | ListT etyp -> ListT (subst_per_eq etyp id dst_typ eqs)
-          
+    | RefT typ -> RefT (subst_per_eq typ id dst_typ eqs)
+
   and body typ = function
       [] -> typ
     | (id, dst_typ)::eqs ->
@@ -34,6 +35,7 @@ let rec subst_typ subst = function
   | FunT (ftyp, rtyp) -> FunT (subst_typ subst ftyp, subst_typ subst rtyp)
   | TypVar id -> subst_typvar subst id
   | ListT etyp -> ListT (subst_typ subst etyp)
+  | RefT typ -> RefT (subst_typ subst typ)
       
 let rec subst_type_scheme subst typ_scheme =
    let bound_typvars = TypeScheme.bound_typvars typ_scheme in
@@ -43,6 +45,7 @@ let rec subst_type_scheme subst typ_scheme =
      | BoolT -> BoolT
      | FunT (ftyp, rtyp) -> FunT (iter ftyp, iter rtyp)
      | ListT etyp -> ListT (iter etyp)
+     | RefT typ -> RefT (iter typ)
      | TypVar id -> begin
          if TypVarSet.mem id bound_typvars then TypVar id
          else subst_typvar subst id
@@ -77,7 +80,8 @@ let unify_eqs eqs =
     | FunT (ftyp1, rtyp1), FunT (ftyp2, rtyp2) ->
         iter acc @< (ftyp1, ftyp2)::(rtyp1, rtyp2)::eqs
     | ListT etyp1, ListT etyp2 -> iter acc @< (etyp1, etyp2)::eqs
-    | (IntT|BoolT|FunT _|ListT _), _ -> None
+    | RefT typ1, RefT typ2 -> iter acc @< (typ1, typ2)::eqs
+    | (IntT|BoolT|FunT _|ListT _|RefT _), _ -> None
         
   and iter acc = function
       [] -> Some acc

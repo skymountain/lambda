@@ -81,7 +81,11 @@ let pps_typ =
         let t = if is_funtyp_without_paren t then "("^t^")" else t in
         (typvar_map, next_typvar, t^" list")
       end
-
+    | RefT typ -> begin
+        let typvar_map, next_typvar, t = pps_typ_inner typvar_map next_typvar typ in
+        let t = if is_funtyp_without_paren t then "("^t^")" else t in
+        (typvar_map, next_typvar, t^" ref")
+      end
   in
   (fun typ -> let _, _, s = pps_typ_inner TypVarMap.empty "a" typ in s)
 

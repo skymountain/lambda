@@ -59,6 +59,7 @@ let init_env binds =
     
 let (env, tenv) =
   let eenv = ref Env.empty in
+  let tenv = Env.empty in
   init_env [
     ("i", IntV 1, TypeScheme.monotyp IntT);
     ("ii", IntV 2, TypeScheme.monotyp IntT);
@@ -77,6 +78,15 @@ let (env, tenv) =
     
     ("<", FunV ("x", Fun ("y", IntT, BinOp (Lt, Var "x", Var "y")), eenv),
      TypeScheme.monotyp @< FunT (IntT, FunT(IntT, BoolT)));
+
+    ("ref", FunV ("x", RefExp (Var "x"), eenv),
+     let ctyp = Type.fresh_typvar () in TypeScheme.closure (FunT (ctyp, RefT ctyp)) tenv);
+
+    ("!", FunV ("x", UnaryOp (Deref, Var "x"), eenv),
+     let ctyp = Type.fresh_typvar () in TypeScheme.closure (FunT (RefT ctyp, ctyp)) tenv);
+
+    (":=", FunV ("x", Fun ("y", Type.fresh_typvar (), BinOp (Assign, Var "x", Var "y")), eenv),
+     let ctyp = Type.fresh_typvar () in TypeScheme.closure (FunT (RefT ctyp, FunT (ctyp, ctyp))) tenv);
   ]
   
 let main () =

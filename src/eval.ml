@@ -12,7 +12,12 @@ let eval_const = function
     CInt i      -> IntV i
   | CBool b     -> BoolV b
   | CNullList   -> ListV []
-    
+
+(* evaluation for unary operator *)
+let eval_unaryop = function
+    Deref, (RefV v) -> !v
+  | Deref, _        -> err "%s can apply only to reference type" @< str_of_unaryop Deref
+      
 (* evaluation for binary operator *)
 let eval_binop = function
   (* airthmetic expression *)
@@ -26,7 +31,9 @@ let eval_binop = function
       err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
   (* cons *)
   | Cons, v, ListV vs      -> ListV (v::vs)
-  | Cons, _, _             -> err "right-side of %s must be list type" @< str_of_binop Cons
+  | Cons, _, _             -> err "right-side of %s must be list value" @< str_of_binop Cons
+  | Assign, RefV v, x      -> v := x; x
+  | Assign, _, _           -> err "left-side of %s must be reference value" @< str_of_binop Assign
       
 (* evaluation for exp *)
 let rec eval_exp env = function
@@ -37,6 +44,7 @@ let rec eval_exp env = function
       end
     end
   | Const c -> eval_const c
+  | UnaryOp (op, exp) -> eval_unaryop (op, eval_exp env exp)
   | BinOp (op, el, er) -> eval_binop (op, eval_exp env el, eval_exp env er)
   | IfExp (cond, then_exp, else_exp) -> begin
       match eval_exp env cond with
@@ -74,6 +82,7 @@ let rec eval_exp env = function
         Some (env, exp) -> eval_exp env exp
       | None            -> err "match failure"
     end
+  | RefExp exp -> RefV (ref @< eval_exp env exp)
       
 (* evaluation for recursive def *)
 and eval_rec env var exp =

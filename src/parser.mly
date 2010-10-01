@@ -17,6 +17,7 @@
 %token UNDERBAR
 %token AS
 %token<Syntax.id> PREFIXOP INFIXOP0 INFIXOP1 INFIXOP2 INFIXOP3 INFIXOP4
+%token COLONEQ
   
 %token<Syntax.id> IDENT
 %token<int> INTLIT
@@ -27,6 +28,7 @@
 %nonassoc BACKSLA WITH
 %nonassoc THEN
 %nonassoc ELSE
+%nonassoc COLONEQ
 %nonassoc AS /* below binary operator (COLON2) */
 %nonassoc below_VBAR
 %left VBAR
@@ -69,6 +71,7 @@ Expr:
 | Expr INFIXOP4 Expr { App (App (Var $2, $1), $3) }
 | Expr EQ       Expr { App (App (Var "=", $1), $3) }
 | Expr COLON2 Expr   { BinOp (Cons,  $1, $3) }
+| Expr COLONEQ Expr  { App (App (Var ":=", $1), $3) }
       
 SExpr:
   PREFIXOP SExpr     { App (Var $1, $2) }
@@ -139,3 +142,4 @@ operator:
 | INFIXOP3 { $1 }
 | INFIXOP4 { $1 }
 | EQ       { "=" }
+| COLONEQ  { ":=" }
