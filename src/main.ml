@@ -52,32 +52,26 @@ let refill_buffer ch =
   let body buf len = fill_buff buf 0 len in
   body
 
-let init_env binds =
-  List.fold_right (fun (var, v, typ) (acc_env, acc_tenv) ->
-                     (Env.extend acc_env var v, Env.extend acc_tenv var typ))
-    binds (Env.empty, Env.empty)
+let extend env tenv var exp =
+  let prog = Decl (var, exp) in
+  let tenv, _, _ = Typing.typing tenv prog in
+  let env, _, _ = Eval.eval env prog in
+  (env, tenv)
     
 let (env, tenv) =
-  let eenv = ref Env.empty in
-  init_env [
-    ("i", IntV 1, TypeScheme.monotyp IntT);
-    ("ii", IntV 2, TypeScheme.monotyp IntT);
-    
-    ("+", FunV ("x", Fun ("y", IntT, BinOp (Plus, Var "x", Var "y")), eenv),
-     TypeScheme.monotyp @< FunT (IntT, FunT(IntT, IntT)));
-    
-    ("-", FunV ("x", Fun ("y", IntT, BinOp (Minus, Var "x", Var "y")), eenv),
-     TypeScheme.monotyp @< FunT (IntT, FunT(IntT, IntT)));
-    
-    ("*", FunV ("x", Fun ("y", IntT, BinOp (Mult, Var "x", Var "y")), eenv),
-     TypeScheme.monotyp @< FunT (IntT, FunT(IntT, IntT)));
-    
-    ("/", FunV ("x", Fun ("y", IntT, BinOp (Div, Var "x", Var "y")), eenv),
-     TypeScheme.monotyp @< FunT (IntT, FunT(IntT, IntT)));
-    
-    ("<", FunV ("x", Fun ("y", IntT, BinOp (Lt, Var "x", Var "y")), eenv),
-     TypeScheme.monotyp @< FunT (IntT, FunT(IntT, BoolT)));
-  ]
+  List.fold_left (fun (env, tenv) (var, exp) -> extend env tenv var exp)
+    (Env.empty, Env.empty)
+    [
+      ("i", Const (CInt 1));
+      ("ii", Const (CInt 2));
+      ("id", Fun ("x", Type.fresh_typvar (), Var "x"));
+      
+      ("+", Fun ("x", IntT, Fun ("y", IntT, BinOp (Plus, Var "x", Var "y"))));
+      ("-", Fun ("x", IntT, Fun ("y", IntT, BinOp (Minus, Var "x", Var "y"))));
+      ("*", Fun ("x", IntT, Fun ("y", IntT, BinOp (Mult, Var "x", Var "y"))));
+      ("/", Fun ("x", IntT, Fun ("y", IntT, BinOp (Div, Var "x", Var "y"))));
+      ("<", Fun ("x", IntT, Fun ("y", IntT, BinOp (Lt, Var "x", Var "y"))));
+    ]
   
 let main () =
   let files = ref [] in
