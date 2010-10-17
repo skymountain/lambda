@@ -65,12 +65,15 @@ let (env, tenv) =
       ("i", Const (CInt 1));
       ("ii", Const (CInt 2));
       ("id", Fun ("x", Type.fresh_typvar (), Var "x"));
+      ("ref", Fun ("x", Type.fresh_typvar (), RefExp (Var "x")));
       
       ("+", Fun ("x", IntT, Fun ("y", IntT, BinOp (Plus, Var "x", Var "y"))));
       ("-", Fun ("x", IntT, Fun ("y", IntT, BinOp (Minus, Var "x", Var "y"))));
       ("*", Fun ("x", IntT, Fun ("y", IntT, BinOp (Mult, Var "x", Var "y"))));
       ("/", Fun ("x", IntT, Fun ("y", IntT, BinOp (Div, Var "x", Var "y"))));
       ("<", Fun ("x", IntT, Fun ("y", IntT, BinOp (Lt, Var "x", Var "y"))));
+      ("!", Fun ("x", Type.fresh_typvar (), UnaryOp (Deref, Var "x")));
+      (":=", Fun ("x", Type.fresh_typvar (), Fun ("y", Type.fresh_typvar (), BinOp (Assign, Var "x", Var "y"))));
     ]
   
 let main () =

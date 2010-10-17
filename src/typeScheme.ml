@@ -16,6 +16,7 @@ let freevars =
     | FunT (ftyp, rtyp) -> iter ftyp acc +> iter rtyp
     | TypVar id -> TypVarSet.add id acc
     | ListT etyp -> iter etyp acc
+    | RefT typ -> iter typ acc
   in
   fun typ -> iter typ TypVarSet.empty
 
@@ -27,9 +28,17 @@ let freevars_in_typ_env tenv =
   List.fold_left (fun acc (_, t) -> TypVarSet.union acc @< freevars_in_typ_scheme t) TypVarSet.empty
   @< Env.list_of tenv
 
-let closure typ tenv =
-  let bound_vars = TypVarSet.diff (freevars typ) (freevars_in_typ_env tenv) in
-  (bound_vars, typ)
+let rec is_syntactic_value = function
+    Var _ | Const _ | Fun _ -> true
+  | TypedExpr (exp, _) -> is_syntactic_value exp
+  | _ -> false
+    
+let closure typ tenv exp =
+  let typvars = 
+    if is_syntactic_value exp then TypVarSet.diff (freevars typ) (freevars_in_typ_env tenv)
+    else TypVarSet.empty
+  in
+  (typvars, typ)
 
 let instantiate (bound_vars, typ) =
   let rec iter acc = function
@@ -39,6 +48,7 @@ let instantiate (bound_vars, typ) =
         let acc, rtyp = iter acc rtyp in
         (acc, FunT (ftyp, rtyp))
     | ListT etyp -> let acc, etyp = iter acc etyp in (acc, ListT etyp)
+    | RefT typ -> let acc, typ = iter acc typ in (acc, RefT typ)
     | TypVar id -> begin
         try (acc, TypVarMap.find id acc) with
           Not_found -> begin
@@ -52,10 +62,6 @@ let instantiate (bound_vars, typ) =
   in
   let (_, t) = iter TypVarMap.empty typ in
   t
-
-(* let make bound_vars typ = *)
-(*   assert (TypVarSet.subset bound_vars @< freevars_in_typ typ); *)
-(*   (bound_vars, typ) *)
 
 let monotyp typ = (TypVarSet.empty, typ)
     

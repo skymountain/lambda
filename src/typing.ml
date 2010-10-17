@@ -23,6 +23,14 @@ let unifyl_with_tenv subst tenv typs msg =
 
 let return typ (tenv, subst) = (tenv, subst, Subst.subst_typ subst typ)
       
+(* typing for unary operator *)
+let typ_unaryop tenv subst typ = function
+    Deref -> begin
+      let ctyp = Type.fresh_typvar () in
+      return ctyp @< unify_with_tenv subst tenv typ (RefT ctyp)
+        @< Printf.sprintf "argument of %s must be reference type" @< str_of_unaryop Deref
+    end
+      
 (* typing for binary operator *)
 let typ_binop tenv subst typ1 typ2 = function
     (Plus | Minus | Mult | Div) as op ->
@@ -36,6 +44,11 @@ let typ_binop tenv subst typ1 typ2 = function
         unify_with_tenv subst tenv typ2 (ListT typ1)
         @< Printf.sprintf "right-side of %s must be type %s"
         (str_of_binop Cons) (pps_typ (ListT typ1))
+  | Assign ->
+      return typ2 @<
+        unify_with_tenv subst tenv typ1 (RefT typ2)
+        @< Printf.sprintf "left-side type of %s is %s, but was expected of type typ %s"
+        (str_of_binop Assign) (pps_typ typ1) (pps_typ @< RefT typ2)
       
 (* typing for exp *)
 let rec typ_exp tenv subst = function
@@ -46,6 +59,11 @@ let rec typ_exp tenv subst = function
     end
 
   | Const c -> (tenv, subst, Type.of_const c)
+
+  | UnaryOp (op, exp) -> begin
+      let tenv, subst, typ = typ_exp tenv subst exp in
+      typ_unaryop tenv subst typ op
+    end
       
   | BinOp (op, exp1, exp2) -> begin
       let tenv, subst, typ1 = typ_exp tenv subst exp1 in
@@ -75,19 +93,22 @@ let rec typ_exp tenv subst = function
       let tenv, subst = unify_with_tenv subst tenv funtyp funtyp' "only function type can be applied" in
       let tenv, subst, atyp = typ_exp tenv subst exp2 in
       let ftyp = Subst.subst_typ subst ftyp in
-      let tenv, subst = unify_with_tenv subst tenv ftyp atyp "type of actual argument must correspond with one of formal argument" in
+      let tenv, subst = unify_with_tenv subst tenv ftyp atyp
+        @< Printf.sprintf "type of actual argument %s must correspond with one of formal argument %s"
+        (pps_typ atyp) (pps_typ @< Subst.subst_typ subst rtyp)
+      in
       (tenv, subst, Subst.subst_typ subst rtyp)
     end
       
   | Let (var, exp, body) -> begin
       let tenv, subst, typ = typ_exp tenv subst exp in
-      let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv) subst body in
+      let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv exp) subst body in
       (Env.remove tenv var, subst, typ)
     end
       
   | LetRec (var, typ, exp, body) -> begin
       let tenv, subst, typ = typ_letrec tenv subst var typ exp in
-      let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv) subst body in
+      let tenv, subst, typ = typ_exp (Env.extend tenv var @< TypeScheme.closure typ tenv exp) subst body in
       (Env.remove tenv var, subst, typ)
     end
       
@@ -127,7 +148,12 @@ let rec typ_exp tenv subst = function
       in
       iter tenv subst typ branches
     end
-        
+
+  | RefExp exp -> begin
+      let tenv, subst, typ = typ_exp tenv subst exp in
+      (tenv, subst, RefT typ)
+    end
+      
 (* typing for let-rec *)
 and typ_letrec tenv subst var funtyp exp =
   let ftyp, rtyp = Type.fresh_typvar (), Type.fresh_typvar () in
@@ -146,13 +172,13 @@ and typ_letrec tenv subst var funtyp exp =
 (* typing for program *)
 let typing tenv =
   
-  let return var (tenv, _, typ) =
-    let typ = TypeScheme.closure typ tenv in
+  let return var exp (tenv, _, typ) =
+    let typ = TypeScheme.closure typ tenv exp in
     Env.extend tenv var typ, var, typ
   in
   
   function
-    Exp exp -> return "it" @< typ_exp tenv Subst.empty exp
-  | Decl (var, exp) -> return var @< typ_exp tenv Subst.empty exp
-  | DeclRec (var, typ, exp) -> return var @< typ_letrec tenv Subst.empty var typ exp
+    Exp exp -> return "it" exp @< typ_exp tenv Subst.empty exp
+  | Decl (var, exp) -> return var exp @< typ_exp tenv Subst.empty exp
+  | DeclRec (var, typ, exp) -> return var exp @< typ_letrec tenv Subst.empty var typ exp
   | EOF -> assert false

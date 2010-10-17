@@ -67,6 +67,11 @@ let pps =
         let t = if is_funtyp_without_paren t then "("^t^")" else t in
         (typvar_map, typvar, t^" list")
       end
+    | RefT typ -> begin
+        let typvar_map, typvar, t = iter typvar_map typvar is_bound typ in
+        let t = if is_funtyp_without_paren t then "("^t^")" else t in
+        (typvar_map, typvar, t^" ref")
+      end
   in
   (fun is_bound typ -> let _, _, s = iter TypVarMap.empty "a" is_bound typ in s)
 

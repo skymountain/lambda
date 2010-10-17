@@ -15,4 +15,3 @@ let of_const = function
     CInt _ -> IntT
   | CBool _ -> BoolT
   | CNullList -> ListT (fresh_typvar ())
-    
