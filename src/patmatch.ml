@@ -56,7 +56,7 @@ let rec tmatch err tenv subst = function
       let tenv, subst, etyp = tmatch err tenv subst epat in
       let tenv, subst, ltyp = tmatch err tenv subst lpat in
       match unify subst ltyp @< ListT etyp with
-        Some subst -> (tenv, subst, subst_typ subst ltyp)
+        Some subst -> (subst_tenv subst tenv, subst, subst_typ subst ltyp)
       | None       -> err @< Printf.sprintf "cons patterns match with only values of list type, not %s"
                                @< Printtyp.pps_typ @< subst_typ subst ltyp
     end

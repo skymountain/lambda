@@ -136,11 +136,13 @@ let rec typ_exp tenv subst = function
             let btenv, subst, ptyp = Patmatch.tmatch err tenv subst pat in
             let btenv, subst = unify_with_tenv subst btenv ctyp ptyp @< msg ctyp ptyp in
             let (_, subst, btyp) = typ_exp btenv subst body in
-            let tenv, subst, btyp' = iter tenv subst btyp t in
+            let tenv, subst, btyp' = iter (Subst.subst_tenv subst tenv) subst (Subst.subst_typ subst ctyp) t in
+            let btyp = Subst.subst_typ subst btyp in
             match Subst.unify subst btyp btyp' with
               Some subst -> (Subst.subst_tenv subst tenv, subst, Subst.subst_typ subst btyp)
             | None       -> err @< Printf.sprintf "%s doesn't match with %s: all branch expresions must be same types"
                                      (pps_typ btyp) (pps_typ btyp')
+
           end
         | _ -> assert false
       in
