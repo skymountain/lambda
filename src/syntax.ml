@@ -49,9 +49,15 @@ type exp =
   | ListLit of exp list
   | TypedExpr of exp * typ      
   | MatchExp of exp * (pat * exp) list
-      
-type program =
+
+type eval =
     Exp  of exp
   | Decl of id * exp
   | DeclRec of id * typ * exp
+
+type typing =
+  | TypeDecl of typ
+
+type program =
+  | Eval of eval
   | EOF

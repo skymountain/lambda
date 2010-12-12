@@ -128,4 +128,3 @@ let typing tenv =
     Exp exp -> return tenv "it" @< typ_exp tenv exp
   | Decl (var, exp) -> return tenv var @< typ_exp tenv exp
   | DeclRec (var, typ, exp) -> return tenv var @< typ_letrec tenv var typ exp
-  | EOF -> assert false

@@ -14,15 +14,11 @@ let rec read_eval_print prompt fun_lexbuf tenv env err =
     let prog = Parser.main Lexer.main @< Lexing.from_function fun_lexbuf in
     match prog with
       EOF -> (tenv, env)
-    | _   -> begin
-        let (newtenv, id_typ, typ) = Typing.typing tenv prog in
-        let (newenv, id ,v) = Eval.eval env prog in
+    | Eval e -> begin
+        let (newtenv, id_typ, typ) = Typing.typing tenv e in
+        let (newenv, id ,v) = Eval.eval env e in
         assert (id_typ = id);
-        print_string @< "val "^id;
-        print_string " : ";
-        Type.pp_typ typ;
-        print_string " = ";
-        pp_val v;
+        Printf.printf "val %s : %s = %s" id (Type.pps_typ typ) (pps_val v);
         print_newline ();
         read_eval_print prompt fun_lexbuf newtenv newenv err
       end

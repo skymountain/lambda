@@ -100,4 +100,3 @@ let eval env =
     Exp exp -> return env "it" @< eval_exp env exp
   | Decl (var, exp) -> return env var @< eval_exp env exp
   | DeclRec (var, _, exp) -> return env var @< eval_rec env var exp
-  | EOF -> assert false

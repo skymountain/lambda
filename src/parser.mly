@@ -44,10 +44,13 @@
 %%
   
 main:
+  Eval     { Eval $1 }
+| EOF      { Syntax.EOF }
+
+Eval:
   Expr SEMICOLON2 { Exp $1 }
 | LET Ident EQ Expr SEMICOLON2 { Decl ($2, $4) }
 | LET REC Ident COLON TypeExpr EQ Expr SEMICOLON2 { DeclRec ($3, $5, $7) }
-| EOF { Syntax.EOF }
 
 Expr:
   SExpr { $1 }
