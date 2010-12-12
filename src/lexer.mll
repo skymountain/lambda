@@ -25,13 +25,15 @@
   ]
 }
 
-let alphabet  = ['a'-'z']
-let ident_top = ['a'-'z' '_']
-let ident_bdy = ['a'-'z' '_' '\'' '0'-'9']
-let blank = [' ' '\009' '\012' '\n']
+let lower_alphabet = ['a'-'z' '_']
+let digit          = ['0'-'9']
+let letter         = ['a'-'z' 'A'-'Z']
+let symbolchar     = ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~' ]
 
-let symbolchar = ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~' ]
-  
+let ident          = (letter | '_') (letter | digit | '_' | '\'')*
+let lower_ident    = lower_alphabet (lower_alphabet | digit | '\'')*
+let blank          = [' ' '\009' '\012' '\n']
+
 rule main = parse
   blank+ { main lexbuf }
 | '\\'   { Parser.BACKSLA }
@@ -45,11 +47,12 @@ rule main = parse
 | '|'    { Parser.VBAR }
 | ';'    { Parser.SEMICOLON }
 | '_'    { Parser.UNDERBAR }
+| '\''   { Parser.QUOTE }
 | "->"   { Parser.RARROW }
 | ";;"   { Parser.SEMICOLON2 }
 | "::"   { Parser.COLON2 }
-      
-| "-"? [ '0'-'9' ]+
+
+| "-"? digit+
       {
         let s = Lexing.lexeme lexbuf in
         try Parser.INTLIT (int_of_string s) with
@@ -68,12 +71,11 @@ rule main = parse
           { INFIXOP3 (Lexing.lexeme lexbuf) }
 | "**" symbolchar*
           { INFIXOP4 (Lexing.lexeme lexbuf) }
-          
-| ident_top ident_bdy*
+| lower_ident
          {
            let s = Lexing.lexeme lexbuf in
            try List.assoc s reserv_words with
-             Not_found -> IDENT s
+             Not_found -> LIDENT s
          }
 | "(*"   { comment 0 lexbuf; main lexbuf }
 | eof    { EOF }

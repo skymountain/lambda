@@ -55,9 +55,6 @@ type eval =
   | Decl of id * exp
   | DeclRec of id * typ * exp
 
-type typing =
-  | TypeDecl of typ
-
 type program =
   | Eval of eval
   | EOF

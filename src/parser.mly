@@ -17,9 +17,9 @@
 %token UNDERBAR
 %token AS
 %token<Syntax.id> PREFIXOP INFIXOP0 INFIXOP1 INFIXOP2 INFIXOP3 INFIXOP4
-  
-%token<Syntax.id> IDENT
+%token<Syntax.id> LIDENT
 %token<int> INTLIT
+%token QUOTE
 %token EOF
 
 %nonassoc IN
@@ -121,18 +121,12 @@ PListExpr:
 PListExpr_:
   PatternExpr { $1 }
       
-TypeExpr:
-  INT                      { IntT }
-| BOOL                     { BoolT }
-| TypeExpr LIST            { ListT $1 }
-| TypeExpr RARROW TypeExpr { FunT ($1, $3) }
-| LPAREN TypeExpr RPAREN   { $2 }
 
 Ident:
-  IDENT                  { $1 }
-| LPAREN operator RPAREN { $2 }
+  LIDENT                 { $1 }
+| LPAREN Operator RPAREN { $2 }
 
-operator:
+Operator:
   PREFIXOP { $1 }
 | INFIXOP0 { $1 }
 | INFIXOP1 { $1 }
@@ -140,3 +134,10 @@ operator:
 | INFIXOP3 { $1 }
 | INFIXOP4 { $1 }
 | EQ       { "=" }
+
+TypeExpr:
+  INT                      { IntT }
+| BOOL                     { BoolT }
+| TypeExpr LIST            { ListT $1 }
+| TypeExpr RARROW TypeExpr { FunT ($1, $3) }
+| LPAREN TypeExpr RPAREN   { $2 }
