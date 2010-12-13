@@ -74,7 +74,7 @@ let (env, tenv) =
      TyFun (TyInt, TyFun(TyInt, TyBool)));
   ]
 
-let tctx = { typ_env = tenv; typvar_map = TypvarMap.empty }
+let tctx = { typ_env = tenv; typvar_map = TypvarMap.empty; typdef_env = Env.empty }
 
 let main () =
   let files = ref [] in
