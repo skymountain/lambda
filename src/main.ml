@@ -11,7 +11,7 @@ let p_msg s = print_endline s
 let rec read_eval_print prompt fun_lexbuf tctx env err =
   print_string prompt;
   flush stdout;
-  try 
+  try
     let prog = Parser.main Lexer.main @< Lexing.from_function fun_lexbuf in
     match prog with
       EOF -> (tctx, env)
@@ -53,7 +53,7 @@ let init_env binds =
   List.fold_right (fun (var, v, typ) (acc_env, acc_tenv) ->
                      (Env.extend acc_env var v, Env.extend acc_tenv var typ))
     binds (Env.empty, Env.empty)
-    
+
 let (env, tenv) =
   init_env [
     ("i", IntV 1, TyInt); ("ii", IntV 2, TyInt);

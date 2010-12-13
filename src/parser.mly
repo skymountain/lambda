@@ -1,5 +1,6 @@
 %{
   open Syntax
+  open Type
 %}
 
 %token BACKSLA DOT SEMICOLON2
@@ -19,7 +20,6 @@
 %token<Syntax.id> PREFIXOP INFIXOP0 INFIXOP1 INFIXOP2 INFIXOP3 INFIXOP4
 %token<Syntax.id> LIDENT
 %token<Syntax.id> UIDENT
-%token<Syntax.id> TVIDENT
 %token<int> INTLIT
 %token COMMA
 %token OF
@@ -49,14 +49,14 @@
 %%
   
 main:
-  Eval     { Eval $1 }
-| TypeDef  { TypDef $1 }
-| EOF      { Syntax.EOF }
+  Eval SEMICOLON2    { Eval $1 }
+| TypeDef SEMICOLON2 { TypDef $1 }
+| EOF                { Syntax.EOF }
 
 Eval:
-  Expr SEMICOLON2 { Exp $1 }
-| LET Ident EQ Expr SEMICOLON2 { Decl ($2, $4) }
-| LET REC Ident COLON TypeExpr EQ Expr SEMICOLON2 { DeclRec ($3, $5, $7) }
+  Expr                                 { Exp $1 }
+| LET Ident EQ Expr                    { Decl ($2, $4) }
+| LET REC Ident COLON TypeExpr EQ Expr { DeclRec ($3, $5, $7) }
 
 Expr:
   SExpr { $1 }
@@ -149,8 +149,8 @@ TypeParams:
 | TypeParameter             { [$1] }
 | LPAREN TypeParams_ RPAREN { $2 }
 TypeParams_:
-  TypeParameter             { [$1] }
-| TVIDENT COMMA TypeParams_ { $1::$3 }
+  TypeParameter                   { [$1] }
+| TypeParameter COMMA TypeParams_ { $1::$3 }
 
 TypeParameter:
   QUOTE LIDENT              { $2 }

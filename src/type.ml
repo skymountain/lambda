@@ -8,7 +8,7 @@ type typ =
   | TyList of typ
   | TyVar  of tyvar
 
-type context = { typ_env: (Syntax.id * typ) Env.t; typvar_map: TypvarMap.t }
+type context = { typ_env: (Syntax.id * typ) Env.t; typvar_map: TypvarMap.t; typdef_env: (Syntax.id * Syntax.typdef) Env.t }
 
 let rec map_typ map = function
     Syntax.IntT            -> (map, TyInt)
@@ -72,4 +72,3 @@ let pps_typ =
 
 let rec pp_typ typ =
   print_string @< pps_typ typ
-

@@ -62,7 +62,7 @@ let rec typ_exp ctx = function
 
   | Fun (var, typ, body) ->
       let typvar_map, typ = map_typ ctx.typvar_map typ in
-      let ctx = { typ_env = Env.extend ctx.typ_env var typ; typvar_map = typvar_map } in
+      let ctx = { ctx with typ_env = Env.extend ctx.typ_env var typ; typvar_map = typvar_map } in
       let typvar_map, btyp = typ_exp ctx body in
       (typvar_map, TyFun (typ, btyp))
 
@@ -77,12 +77,12 @@ let rec typ_exp ctx = function
 
   | Let (var, exp, body) ->
       let typvar_map, typ = typ_exp ctx exp in
-      let ctx = { typ_env = Env.extend ctx.typ_env var typ; typvar_map = typvar_map } in
+      let ctx = { ctx with typ_env = Env.extend ctx.typ_env var typ; typvar_map = typvar_map } in
       typ_exp ctx body
 
   | LetRec (var, typ, exp, body) ->
       let typvar_map, typ = typ_letrec ctx var typ exp in
-      let ctx = { typ_env = Env.extend ctx.typ_env var typ; typvar_map = typvar_map } in
+      let ctx = { ctx with typ_env = Env.extend ctx.typ_env var typ; typvar_map = typvar_map } in
       typ_exp ctx body
 
   | ListLit exps -> begin
@@ -110,12 +110,12 @@ let rec typ_exp ctx = function
           [(pat, body)] -> begin
             let tenv' = Patmatch.tmatch err typvar_map cond_typ pat in
             let tenv = Env.extend_by_env ctx.typ_env tenv' in
-            typ_exp { typ_env = tenv; typvar_map = typvar_map } body
+            typ_exp { ctx with typ_env = tenv; typvar_map = typvar_map } body
           end
         | (pat, body)::t -> begin
             let tenv' = Patmatch.tmatch err typvar_map cond_typ pat in
             let tenv = Env.extend_by_env ctx.typ_env tenv' in
-            let typvar_map ,btyp = typ_exp { typ_env = tenv; typvar_map = typvar_map } body in
+            let typvar_map ,btyp = typ_exp { ctx with typ_env = tenv; typvar_map = typvar_map } body in
             let typvar_map, btyp' = iter typvar_map cond_typ t in
             if eq_typ btyp btyp' then (typvar_map, btyp)
             else err @< Printf.sprintf "%s doesn't match with %s: all branch expresions must be same types"
@@ -131,7 +131,7 @@ and typ_letrec ctx var typ exp =
   let typvar_map, typ = map_typ ctx.typvar_map typ in
   match exp, typ with
     Fun _, TyFun _ -> begin
-      let ctx = { typ_env = Env.extend ctx.typ_env var typ; typvar_map = typvar_map } in
+      let ctx = { ctx with typ_env = Env.extend ctx.typ_env var typ; typvar_map = typvar_map } in
       let typvar_map, etyp = typ_exp ctx exp in
       if eq_typ typ etyp then (typvar_map, etyp)
       else err "expression's type doesn't cossrespond with the specified type"
@@ -141,7 +141,7 @@ and typ_letrec ctx var typ exp =
 (* typing for program *)
 let typing ctx =
   let return tenv var (typvar_map, typ) =
-    {
+    { ctx with
       typ_env    = Env.extend tenv var typ;
       typvar_map = TypvarMap.refresh typvar_map;
     },
