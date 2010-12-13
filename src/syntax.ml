@@ -21,7 +21,8 @@ type typ =
   | BoolT
   | FunT  of typ * typ
   | ListT of typ
-      
+  | VarT  of id
+   
 type const =
     CInt      of int
   | CBool     of bool
@@ -55,6 +56,13 @@ type eval =
   | Decl of id * exp
   | DeclRec of id * typ * exp
 
+type typ_kind =
+    TdExp of typ
+  | TdVariance of (string * typ list) list
+
+type typdef = { td_name: string; td_params: string list; td_kind: typ_kind; }
+
 type program =
   | Eval of eval
+  | TypDef of typdef
   | EOF

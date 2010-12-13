@@ -18,8 +18,13 @@
 %token AS
 %token<Syntax.id> PREFIXOP INFIXOP0 INFIXOP1 INFIXOP2 INFIXOP3 INFIXOP4
 %token<Syntax.id> LIDENT
+%token<Syntax.id> UIDENT
+%token<Syntax.id> TVIDENT
 %token<int> INTLIT
+%token COMMA
+%token OF
 %token QUOTE
+%token TYPE
 %token EOF
 
 %nonassoc IN
@@ -45,6 +50,7 @@
   
 main:
   Eval     { Eval $1 }
+| TypeDef  { TypDef $1 }
 | EOF      { Syntax.EOF }
 
 Eval:
@@ -135,9 +141,37 @@ Operator:
 | INFIXOP4 { $1 }
 | EQ       { "=" }
 
+TypeDef:
+  TYPE TypeParams LIDENT EQ TypeDefinition { { td_name = $3; td_params = $2; td_kind = $5 } }
+
+TypeParams:
+                            { [] }
+| TVIDENT                   { [$1] }
+| LPAREN TypeParams_ RPAREN { $2 }
+TypeParams_:
+  TVIDENT                   { [$1] }
+| TVIDENT COMMA TypeParams_ { $1::$3 }
+
+TypeDefinition:
+  TypeExpr                  { TdExp $1 }
+| VariantDefinitionList     { TdVariance $1 }
+
+VariantDefinitionList:
+  VariantDefinition                            { [$1] }
+| VariantDefinition VBAR VariantDefinitionList { $1::$3 }
+
+VariantDefinition:
+  UIDENT { ($1, []) }
+| UIDENT OF TypeExprList { ($1, $3) }
+
 TypeExpr:
   INT                      { IntT }
 | BOOL                     { BoolT }
+| QUOTE TVIDENT            { VarT $2 }
 | TypeExpr LIST            { ListT $1 }
 | TypeExpr RARROW TypeExpr { FunT ($1, $3) }
 | LPAREN TypeExpr RPAREN   { $2 }
+
+TypeExprList:
+  TypeExpr                    { [$1] }
+| TypeExpr COMMA TypeExprList { $1::$3 }

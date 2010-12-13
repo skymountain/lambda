@@ -1,44 +1,50 @@
 open Misc
 open Syntax
+open Type
+
+type context = { typ_env: (id * Type.typ) Env.t; typvar_map: TypvarMap.t }
 
 exception Typing_error of string
 let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
-
+  
 (* typing for constant *)
-let typ_const = function
-    CInt _ -> IntT
-  | CBool _ -> BoolT
+let typ_const map = function
+    CInt _ -> (map, TyInt)
+  | CBool _ -> (map, TyBool)
   | CNullList typ -> begin
       match typ with
-        ListT _ -> typ
+        ListT _ -> Type.map_typ map typ
       | _       -> err "specified type isn't list type"
     end
       
 (* typing for binary operator *)      
 let typ_binop typ1 typ2 = function
     (Plus | Minus | Mult | Div) as op ->
-      if typ1 = IntT && typ2 = IntT then IntT
+      if typ1 = TyInt && typ2 = TyInt then TyInt
       else err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
   | Lt ->
-      if typ1 = IntT && typ2 = IntT then BoolT
+      if typ1 = TyInt && typ2 = TyInt then TyBool
       else err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop Lt
   | Cons -> begin
       match typ2 with
-        ListT etyp ->
-          if Type.eq_typ typ1 etyp then ListT etyp
+        TyList etyp ->
+          if Type.eq_typ typ1 etyp then TyList etyp
           else err @< Printf.sprintf "element types of %s must be same types" @< str_of_binop Cons
       | _ -> err @< Printf.sprintf "right-side of %s must be list type" @< str_of_binop Cons
     end
       
 (* typing for exp *)
-let rec typ_exp tenv = function
+let rec typ_exp ctx = function
     Var var -> begin
-      match Env.lookup tenv var with
+      match Env.lookup ctx.typ_env var with
         Some t -> t
       | None   -> err @< Printf.sprintf "%s is not bound" var
     end
       
-  | Const c -> typ_const c
+  | Const c -> begin
+      let (map, typ) = typ_const ctx.typvar_map c in
+      
+    end
       
   | BinOp (op, exp1, exp2) -> begin
       let typ1, typ2 = typ_exp tenv exp1, typ_exp tenv exp2 in

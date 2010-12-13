@@ -22,16 +22,21 @@
     ("end",   Parser.END);
     ("as",    Parser.AS);
     ("list",  Parser.LIST);
+    ("of",    Parser.OF);
+    ("type",  Parser.TYPE);
   ]
 }
 
 let lower_alphabet = ['a'-'z' '_']
+let upper_alphabet = ['A'-'Z']
+let alphabet       = lower_alphabet | upper_alphabet
 let digit          = ['0'-'9']
 let letter         = ['a'-'z' 'A'-'Z']
 let symbolchar     = ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~' ]
 
-let ident          = (letter | '_') (letter | digit | '_' | '\'')*
-let lower_ident    = lower_alphabet (lower_alphabet | digit | '\'')*
+let tv_ident       = (letter | '_') (letter | digit | '_' | '\'')*
+let lower_ident    = lower_alphabet (alphabet | digit | '\'')*
+let upper_ident    = upper_alphabet (alphabet | digit | '\'')*
 let blank          = [' ' '\009' '\012' '\n']
 
 rule main = parse
@@ -47,6 +52,7 @@ rule main = parse
 | '|'    { Parser.VBAR }
 | ';'    { Parser.SEMICOLON }
 | '_'    { Parser.UNDERBAR }
+| ','    { Parser.COMMA }
 | '\''   { Parser.QUOTE }
 | "->"   { Parser.RARROW }
 | ";;"   { Parser.SEMICOLON2 }
@@ -71,15 +77,19 @@ rule main = parse
           { INFIXOP3 (Lexing.lexeme lexbuf) }
 | "**" symbolchar*
           { INFIXOP4 (Lexing.lexeme lexbuf) }
+| tv_ident as x
+          { TVIDENT x }
 | lower_ident
-         {
-           let s = Lexing.lexeme lexbuf in
-           try List.assoc s reserv_words with
-             Not_found -> LIDENT s
-         }
-| "(*"   { comment 0 lexbuf; main lexbuf }
-| eof    { EOF }
-| _      { err (Printf.sprintf "unknown token %s" @< Lexing.lexeme lexbuf) }
+          {
+            let s = Lexing.lexeme lexbuf in
+            try List.assoc s reserv_words with
+              Not_found -> LIDENT s
+          }
+| upper_ident
+          { UIDENT (Lexing.lexeme lexbuf) }
+| "(*"    { comment 0 lexbuf; main lexbuf }
+| eof     { EOF }
+| _       { err (Printf.sprintf "unknown token %s" @< Lexing.lexeme lexbuf) }
       
 and comment depth = parse
     "*)" { if depth = 0 then () else comment (depth-1) lexbuf }
