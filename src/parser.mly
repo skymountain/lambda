@@ -146,11 +146,15 @@ TypeDef:
 
 TypeParams:
                             { [] }
-| TVIDENT                   { [$1] }
+| TypeParameter             { [$1] }
 | LPAREN TypeParams_ RPAREN { $2 }
 TypeParams_:
-  TVIDENT                   { [$1] }
+  TypeParameter             { [$1] }
 | TVIDENT COMMA TypeParams_ { $1::$3 }
+
+TypeParameter:
+  QUOTE LIDENT              { $2 }
+| QUOTE UIDENT              { $2 }
 
 TypeDefinition:
   TypeExpr                  { TdExp $1 }
@@ -167,7 +171,7 @@ VariantDefinition:
 TypeExpr:
   INT                      { IntT }
 | BOOL                     { BoolT }
-| QUOTE TVIDENT            { VarT $2 }
+| TypeParameter            { VarT $1 }
 | TypeExpr LIST            { ListT $1 }
 | TypeExpr RARROW TypeExpr { FunT ($1, $3) }
 | LPAREN TypeExpr RPAREN   { $2 }

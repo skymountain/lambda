@@ -13,6 +13,7 @@ let add s (i, map) =
     let n = i + 1 in
     (n, M.add s n map)
   end
+let refresh (i, _) = (i, M.empty)
 
 let mem k (_, map)  = M.mem k map
 let find k (_, map) = M.find k map

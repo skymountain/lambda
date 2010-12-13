@@ -1,29 +1,31 @@
 open Misc
 open Syntax
 open Value
+open Type
 
 exception Exit
   
 let err s = print_endline s 
 let p_msg s = print_endline s
   
-let rec read_eval_print prompt fun_lexbuf tenv env err =
+let rec read_eval_print prompt fun_lexbuf tctx env err =
   print_string prompt;
   flush stdout;
   try 
     let prog = Parser.main Lexer.main @< Lexing.from_function fun_lexbuf in
     match prog with
-      EOF -> (tenv, env)
+      EOF -> (tctx, env)
+    | TypDef _ -> assert false
     | Eval e -> begin
-        let (newtenv, id_typ, typ) = Typing.typing tenv e in
+        let (tctx, id_typ, typ) = Typing.typing tctx e in
         let (newenv, id ,v) = Eval.eval env e in
         assert (id_typ = id);
         Printf.printf "val %s : %s = %s" id (Type.pps_typ typ) (pps_val v);
         print_newline ();
-        read_eval_print prompt fun_lexbuf newtenv newenv err
+        read_eval_print prompt fun_lexbuf tctx newenv err
       end
   with
-    e -> let f s = err s; read_eval_print prompt fun_lexbuf tenv env err in
+    e -> let f s = err s; read_eval_print prompt fun_lexbuf tctx env err in
     (match e with
        Parsing.Parse_error   -> f "Syntax error" 
      | Lexer.Lexical_error s -> f s
@@ -54,24 +56,26 @@ let init_env binds =
     
 let (env, tenv) =
   init_env [
-    ("i", IntV 1, IntT); ("ii", IntV 2, IntT);
+    ("i", IntV 1, TyInt); ("ii", IntV 2, TyInt);
     
     ("+", FunV ("x", Fun ("y", IntT, BinOp (Plus, Var "x", Var "y")), ref Env.empty),
-     FunT (IntT, FunT(IntT, IntT)));
+     TyFun (TyInt, TyFun(TyInt, TyInt)));
     
     ("-", FunV ("x", Fun ("y", IntT, BinOp (Minus, Var "x", Var "y")), ref Env.empty),
-     FunT (IntT, FunT(IntT, IntT)));
+     TyFun (TyInt, TyFun(TyInt, TyInt)));
     
     ("*", FunV ("x", Fun ("y", IntT, BinOp (Mult, Var "x", Var "y")), ref Env.empty),
-     FunT (IntT, FunT(IntT, IntT)));
+     TyFun (TyInt, TyFun(TyInt, TyInt)));
     
     ("/", FunV ("x", Fun ("y", IntT, BinOp (Div, Var "x", Var "y")), ref Env.empty),
-     FunT (IntT, FunT(IntT, IntT)));
+     TyFun (TyInt, TyFun(TyInt, TyInt)));
     
     ("<", FunV ("x", Fun ("y", IntT, BinOp (Lt, Var "x", Var "y")), ref Env.empty),
-     FunT (IntT, FunT(IntT, BoolT)));
+     TyFun (TyInt, TyFun(TyInt, TyBool)));
   ]
-  
+
+let tctx = { typ_env = tenv; typvar_map = TypvarMap.empty }
+
 let main () =
   let files = ref [] in
   let interact = ref None in
@@ -90,13 +94,13 @@ let main () =
   in
   let ins = List.append files @< if interact then [(stdin, (fun s -> err s), None, "> ")] else [] in
   List.fold_left
-    (fun (tenv, env) (ichann, err, file, prompt) ->
+    (fun (tctx, env) (ichann, err, file, prompt) ->
        (* print file name *)
        (match file with
           None -> ()
         | Some file -> p_msg @< Printf.sprintf "will load %s" file);
-       read_eval_print prompt (refill_buffer ichann) tenv env err)
-    (tenv, env)
+       read_eval_print prompt (refill_buffer ichann) tctx env err)
+    (tctx, env)
     ins
 
 let _ = try ignore @< main () with Exit -> ();

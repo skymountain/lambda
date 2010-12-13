@@ -7,7 +7,9 @@ type typ =
   | TyFun  of typ * typ
   | TyList of typ
   | TyVar  of tyvar
-      
+
+type context = { typ_env: (Syntax.id * typ) Env.t; typvar_map: TypvarMap.t }
+
 let rec map_typ map = function
     Syntax.IntT            -> (map, TyInt)
   | Syntax.BoolT           -> (map, TyBool)

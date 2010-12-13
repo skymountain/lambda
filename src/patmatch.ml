@@ -2,6 +2,7 @@ open OptionMonad
 open Misc
 open Syntax
 open Value
+open Type
 
 module VarSet = Set.Make(String)
 
@@ -45,12 +46,15 @@ let rec ematch v = function
       | _        -> ematch v rpat
     end
       
-let rec tmatch_const typ c =
+let rec tmatch_const map typ c =
   match typ, c with
-    IntT, CInt _               -> true
-  | BoolT, CBool _             -> true
-  | (ListT _) as typ1, CNullList typ2 -> Type.eq_typ typ1 typ2
-  | _                          -> false
+    TyInt, CInt _                      -> true
+  | TyBool, CBool _                    -> true
+  | (TyList _) as typ1, CNullList typ2 -> begin
+      let _, typ2 = map_typ map typ2 in
+      eq_typ typ1 typ2
+    end
+  | _                                       -> false
 
 let mem_env env = List.fold_left (fun acc (x, _) -> VarSet.add x acc) VarSet.empty @< Env.list_of env
   
@@ -66,32 +70,32 @@ let eq_env env env' =
     Env.fold env
     (fun eq (var, typ) -> eq &&
        match Env.lookup env' var with
-         Some typ' -> Type.eq_typ typ typ'
+         Some typ' -> eq_typ typ typ'
        | _         -> false)
     true
     
   
-let typ_of_const = function
-    CInt _ -> IntT
-  | CBool _ -> BoolT
-  | CNullList t -> t
-      
-let rec tmatch err typ = function
+let typ_of_const map = function
+    CInt _ -> TyInt
+  | CBool _ -> TyBool
+  | CNullList t -> snd @< map_typ map t
+
+let rec tmatch err typvar_map typ = function
     PVar var -> Env.extend Env.empty var typ
   | WildCard -> Env.empty
   | PConst c ->
-      if tmatch_const typ c then Env.empty
-      else err @< Printf.sprintf "type %s doesn't match with type %s" (Type.pps_typ typ) (Type.pps_typ @< typ_of_const c)
+      if tmatch_const typvar_map typ c then Env.empty
+      else err @< Printf.sprintf "type %s doesn't match with type %s" (pps_typ typ) (pps_typ @< typ_of_const typvar_map c)
   | As (pat, var) -> begin
-      let tenv = tmatch err typ pat in
+      let tenv = tmatch err typvar_map typ pat in
       match Env.lookup tenv var with
         None   -> Env.extend tenv var typ
       | Some _ -> err @< Printf.sprintf "variable %s is bound several times" var
     end
   | PList pats -> begin
       match typ with
-        ListT etyp -> begin
-          let tenvs = List.map (fun pat -> tmatch err etyp pat) pats in
+        TyList etyp -> begin
+          let tenvs = List.map (fun pat -> tmatch err typvar_map etyp pat) pats in
           List.fold_left
             (fun acc tenv ->
                if is_disjoint_env acc tenv then Env.extend_by_env acc tenv
@@ -102,17 +106,17 @@ let rec tmatch err typ = function
     end
   | PCons (epat, lpat) -> begin
       match typ with
-        ListT etyp -> begin
-          let etenv = tmatch err etyp epat in
-          let ltenv = tmatch err typ lpat in
+        TyList etyp -> begin
+          let etenv = tmatch err typvar_map etyp epat in
+          let ltenv = tmatch err typvar_map typ lpat in
           if is_disjoint_env etenv ltenv then Env.extend_by_env etenv ltenv
           else err "variable %s is bound several times"
         end
       | _ -> err "cons patterns match with only list type"
     end
   | POr (lpat, rpat) -> begin
-      let ltenv = tmatch err typ lpat in
-      let rtenv = tmatch err typ rpat in
+      let ltenv = tmatch err typvar_map typ lpat in
+      let rtenv = tmatch err typvar_map typ rpat in
       if eq_env ltenv rtenv then ltenv
       else err "both sieds of or-pattern must have same bindings exactly"
     end
