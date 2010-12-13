@@ -8,8 +8,6 @@
   let reserv_words = [
     ("let",   Parser.LET);
     ("in",    Parser.IN);
-    ("int",   Parser.INT);
-    ("bool",  Parser.BOOL);
     ("true",  Parser.TRUE);
     ("false", Parser.FALSE);
     ("if",    Parser.IF);
@@ -21,7 +19,6 @@
     ("begin", Parser.BEGIN);
     ("end",   Parser.END);
     ("as",    Parser.AS);
-    ("list",  Parser.LIST);
     ("of",    Parser.OF);
     ("type",  Parser.TYPE);
   ]

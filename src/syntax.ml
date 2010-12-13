@@ -17,17 +17,15 @@ let str_of_binop = function
   | Cons  -> "::"
       
 type typ =
-    IntT
-  | BoolT
   | FunT  of typ * typ
-  | ListT of typ
   | VarT  of id
-   
+  | NameT of typ list * id
+
 type const =
     CInt      of int
   | CBool     of bool
   | CNullList of typ
-      
+
 (* pattern *)      
 type pat =
     PVar   of id
@@ -37,7 +35,7 @@ type pat =
   | PList  of pat list
   | PCons  of pat * pat
   | POr    of pat * pat
-      
+
 type exp =
     Var     of id
   | Const   of const

@@ -8,11 +8,10 @@
 %token RARROW COLON
 %token EQ
 %token LET IN
-%token INT
-%token BOOL TRUE FALSE
+%token TRUE FALSE
 %token IF THEN ELSE
 %token REC
-%token LIST LSQPAREN RSQPAREN SEMICOLON COLON2
+%token LSQPAREN RSQPAREN SEMICOLON COLON2
 %token BEGIN END
 %token MATCH WITH VBAR
 %token UNDERBAR
@@ -43,7 +42,7 @@
 %left INFIXOP3
 %right INFIXOP4
 %nonassoc LIST PREFIXOP
-  
+
 %start main
 %type<Syntax.program> main
 %%
@@ -75,7 +74,7 @@ Expr:
 | Expr INFIXOP4 Expr { App (App (Var $2, $1), $3) }
 | Expr EQ       Expr { App (App (Var "=", $1), $3) }
 | Expr COLON2 Expr   { BinOp (Cons,  $1, $3) }
-      
+
 SExpr:
   PREFIXOP SExpr     { App (Var $1, $2) }
 | ConstExpr          { Const $1 }
@@ -169,12 +168,15 @@ VariantDefinition:
 | UIDENT OF TypeExprList { ($1, $3) }
 
 TypeExpr:
-  INT                      { IntT }
-| BOOL                     { BoolT }
-| TypeParameter            { VarT $1 }
-| TypeExpr LIST            { ListT $1 }
-| TypeExpr RARROW TypeExpr { FunT ($1, $3) }
-| LPAREN TypeExpr RPAREN   { $2 }
+  TypeExprListOrEmpty LIDENT { NameT ($2, $1) }
+| TypeParameter              { VarT $1 }
+| TypeExpr RARROW TypeExpr   { FunT ($1, $3) }
+| LPAREN TypeExpr RPAREN     { $2 }
+
+TypeExprListOrEmpty:
+                              { [] }
+| TypeExpr                    { [$1] }
+| LPAREN TypeExprList RPAREN  { $2 }
 
 TypeExprList:
   TypeExpr                    { [$1] }

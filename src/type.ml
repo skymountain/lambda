@@ -1,30 +1,47 @@
 open Misc
 
 type tyvar = int
+type typid = int
+type constr_id = int
+    
 type typ =
-    TyInt
+  | TyInt
   | TyBool
   | TyFun  of typ * typ
   | TyList of typ
   | TyVar  of tyvar
+  | TyName of typ list * typid
 
-type context = { typ_env: (Syntax.id * typ) Env.t; typvar_map: TypvarMap.t; typdef_env: (Syntax.id * Syntax.typdef) Env.t }
+type typdef =
+  | TdVariance of tyvar list * (constr_id * typ list) list
+  | TdAlias of typ
 
-let rec map_typ map = function
-    Syntax.IntT            -> (map, TyInt)
-  | Syntax.BoolT           -> (map, TyBool)
-  | Syntax.FunT (arg, ret) -> begin
-      let (map, arg) = map_typ map arg in
-      let (map, ret) = map_typ map ret in
-      (map, TyFun (arg, ret))
+type context =
+    {
+      typ_env: (Syntax.id * typ) Env.t;
+      typvar_map: TypvarMap.t;
+      typdef_env: (typid * typdef) Env.t;
+    }
+
+let rec map_typ typvar_map typdef_env = function
+  | Syntax.FunT (arg, ret)   -> begin
+      let (map, arg) = map_typ typvar_map typdef_env arg in
+      let (map, ret) = map_typ typvar_map typdef_env ret in
+      (typvar_map, TyFun (arg, ret))
     end
-  | Syntax.ListT typ       -> begin
-      let (map, typ) = map_typ map typ in
-      (map, TyList typ)
+  | Syntax.VarT id            -> begin
+      let typvar_map = TypvarMap.add id typvar_map in
+      (typvar_map, TyVar (TypvarMap.find id typvar_map))
     end
-  | Syntax.VarT id         -> begin
-      let map = TypvarMap.add id map in
-      (map, TyVar (TypvarMap.find id map))
+  | Syntax.NameT (typs, name) -> begin
+      let typvar_map, typs =
+        List.fold_right
+          (fun typ (typvar_map, typs) ->
+             let typvar_map, typ = map_typ typvar_map typdef_env typ in
+             (typvar_map, typ::typs))
+          typs (typvar_map, [])
+      in
+      (typvar_map, TyName (typs, name))
     end
 
 (* equality function *)
