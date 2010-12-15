@@ -4,6 +4,7 @@ open Syntax
 open Value
 open Types
 open Type
+open Printtype
 
 module VarSet = Set.Make(String)
 
@@ -47,33 +48,13 @@ let rec ematch v = function
       | _        -> ematch v rpat
     end
 
-(* let rec proper_typ typ = *)
-(*   match typ with *)
-(*   | TyFun _             -> typ *)
-(*   | TyVariant _         -> typ *)
-(*   | TyVar _             -> typ *)
-(*   | TyAlias (typ, _, _) -> typ *)
-
 let rec tmatch_const tctx typ = function
     CInt _         -> eq_typ typ PredefType.int_typ
   | CBool _        -> eq_typ typ PredefType.bool_typ
   | CNullList ltyp -> begin
       let _, ltyp = map_typ tctx ltyp in
       eq_typ ltyp typ
-      (* match proper_typ ltyp with *)
-      (* | TyFun _ | TyVar _    -> assert false (\* XXX *\) *)
-      (* | TyAlias _            -> assert false *)
-      (* | TyVariant (typs, ident) -> Ident.equal ident PredefType.list_ident *)
     end
-
-  (* match typ, c with *)
-  (*   TyInt, CInt _                      -> true *)
-  (* | TyBool, CBool _                    -> true *)
-  (* | typ1, CNullList typ2 -> begin *)
-  (*     let _, typ2 = map_typ tctx typ2 in *)
-  (*     eq_typ typ1 typ2 *)
-  (*   end *)
-  (* | _                                       -> false *)
 
 let mem_env env = List.fold_left (fun acc (x, _) -> VarSet.add x acc) VarSet.empty @< Env.list_of env
   

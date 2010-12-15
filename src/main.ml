@@ -3,6 +3,7 @@ open Syntax
 open Value
 open Types
 open Type
+open Printtype
 
 exception Exit
   
@@ -25,7 +26,7 @@ let rec read_eval_print prompt fun_lexbuf tctx env err =
         let (tctx, id_typ, typ) = Typing.typing tctx e in
         let (newenv, id ,v) = Eval.eval env e in
         assert (id_typ = id);
-        Printf.printf "val %s : %s = %s" id (Type.pps_typ typ) (pps_val v);
+        Printf.printf "val %s : %s = %s" id (pps_typ typ) (pps_val v);
         print_newline ();
         read_eval_print prompt fun_lexbuf tctx newenv err
       end

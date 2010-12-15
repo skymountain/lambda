@@ -3,10 +3,7 @@ type typid = int
 type constr_id = int
 
 and typ =
-  (* | TyInt *)
-  (* | TyBool *)
   | TyFun     of typ * typ
-  (* | TyList    of typ *)
   | TyVar     of tyvar
   | TyVariant of typ list * Ident.t
   | TyAlias   of typ * typ list * Ident.t
@@ -22,10 +19,7 @@ let rec newtypvar_list = function
   | _ -> assert false
 
 let rec replace_tyvar assoc = function
-  (* | TyInt                       -> TyInt *)
-  (* | TyBool                      -> TyBool *)
   | TyFun (atyp, rtyp)          -> TyFun (replace_tyvar assoc atyp, replace_tyvar assoc rtyp)
-  (* | TyList typ                  -> TyList (replace_tyvar assoc typ) *)
   | TyVar tv                    -> List.assoc tv assoc
   | TyVariant (typs, typdef)    -> TyVariant (List.map (replace_tyvar assoc) typs, typdef)
   | TyAlias (typ, typs, typdef) -> TyAlias (replace_tyvar assoc typ, List.map (replace_tyvar assoc) typs, typdef)

@@ -4,6 +4,7 @@ open Types
 open Type
 open TypeContext
 open TypeDef
+open Printtype
 
 exception Typing_error of string
 let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))

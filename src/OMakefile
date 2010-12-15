@@ -39,6 +39,7 @@ FILES[] =
 	typeContext
 	predefType
 	type
+	printtype
 	value
 	parser
 	lexer
