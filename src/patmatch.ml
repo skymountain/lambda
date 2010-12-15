@@ -2,6 +2,7 @@ open OptionMonad
 open Misc
 open Syntax
 open Value
+open Types
 open Type
 
 module VarSet = Set.Make(String)
@@ -46,12 +47,12 @@ let rec ematch v = function
       | _        -> ematch v rpat
     end
       
-let rec tmatch_const map typ c =
+let rec tmatch_const tctx typ c =
   match typ, c with
     TyInt, CInt _                      -> true
   | TyBool, CBool _                    -> true
   | (TyList _) as typ1, CNullList typ2 -> begin
-      let _, typ2 = map_typ map typ2 in
+      let _, typ2 = map_typ tctx typ2 in
       eq_typ typ1 typ2
     end
   | _                                       -> false
@@ -75,19 +76,19 @@ let eq_env env env' =
     true
     
   
-let typ_of_const map = function
+let typ_of_const tctx = function
     CInt _ -> TyInt
   | CBool _ -> TyBool
-  | CNullList t -> snd @< map_typ map t
+  | CNullList t -> snd @< map_typ tctx t
 
-let rec tmatch err typvar_map typ = function
+let rec tmatch err tctx typ = function
     PVar var -> Env.extend Env.empty var typ
   | WildCard -> Env.empty
   | PConst c ->
-      if tmatch_const typvar_map typ c then Env.empty
-      else err @< Printf.sprintf "type %s doesn't match with type %s" (pps_typ typ) (pps_typ @< typ_of_const typvar_map c)
+      if tmatch_const tctx typ c then Env.empty
+      else err @< Printf.sprintf "type %s doesn't match with type %s" (pps_typ typ) (pps_typ @< typ_of_const tctx c)
   | As (pat, var) -> begin
-      let tenv = tmatch err typvar_map typ pat in
+      let tenv = tmatch err tctx typ pat in
       match Env.lookup tenv var with
         None   -> Env.extend tenv var typ
       | Some _ -> err @< Printf.sprintf "variable %s is bound several times" var
@@ -95,7 +96,7 @@ let rec tmatch err typvar_map typ = function
   | PList pats -> begin
       match typ with
         TyList etyp -> begin
-          let tenvs = List.map (fun pat -> tmatch err typvar_map etyp pat) pats in
+          let tenvs = List.map (fun pat -> tmatch err tctx etyp pat) pats in
           List.fold_left
             (fun acc tenv ->
                if is_disjoint_env acc tenv then Env.extend_by_env acc tenv
@@ -107,16 +108,16 @@ let rec tmatch err typvar_map typ = function
   | PCons (epat, lpat) -> begin
       match typ with
         TyList etyp -> begin
-          let etenv = tmatch err typvar_map etyp epat in
-          let ltenv = tmatch err typvar_map typ lpat in
+          let etenv = tmatch err tctx etyp epat in
+          let ltenv = tmatch err tctx typ lpat in
           if is_disjoint_env etenv ltenv then Env.extend_by_env etenv ltenv
           else err "variable %s is bound several times"
         end
       | _ -> err "cons patterns match with only list type"
     end
   | POr (lpat, rpat) -> begin
-      let ltenv = tmatch err typvar_map typ lpat in
-      let rtenv = tmatch err typvar_map typ rpat in
+      let ltenv = tmatch err tctx typ lpat in
+      let rtenv = tmatch err tctx typ rpat in
       if eq_env ltenv rtenv then ltenv
       else err "both sieds of or-pattern must have same bindings exactly"
     end

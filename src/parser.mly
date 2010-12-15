@@ -1,6 +1,5 @@
 %{
   open Syntax
-  open Type
 %}
 
 %token BACKSLA DOT SEMICOLON2
@@ -156,8 +155,8 @@ TypeParameter:
 | QUOTE UIDENT              { $2 }
 
 TypeDefinition:
-  TypeExpr                  { TdExp $1 }
-| VariantDefinitionList     { TdVariance $1 }
+  TypeExpr                  { TkAlias $1 }
+| VariantDefinitionList     { TkVariance $1 }
 
 VariantDefinitionList:
   VariantDefinition                            { [$1] }
@@ -168,7 +167,7 @@ VariantDefinition:
 | UIDENT OF TypeExprList { ($1, $3) }
 
 TypeExpr:
-  TypeExprListOrEmpty LIDENT { NameT ($2, $1) }
+  TypeExprListOrEmpty LIDENT { NameT ($1, $2) }
 | TypeParameter              { VarT $1 }
 | TypeExpr RARROW TypeExpr   { FunT ($1, $3) }
 | LPAREN TypeExpr RPAREN     { $2 }

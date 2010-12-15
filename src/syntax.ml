@@ -55,8 +55,8 @@ type eval =
   | DeclRec of id * typ * exp
 
 type typ_kind =
-    TdExp of typ
-  | TdVariance of (string * typ list) list
+    TkAlias of typ
+  | TkVariance of (string * typ list) list
 
 type typdef = { td_name: string; td_params: string list; td_kind: typ_kind; }
 

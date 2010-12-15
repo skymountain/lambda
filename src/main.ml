@@ -1,6 +1,7 @@
 open Misc
 open Syntax
 open Value
+open Types
 open Type
 
 exception Exit
@@ -58,19 +59,19 @@ let (env, tenv) =
   init_env [
     ("i", IntV 1, TyInt); ("ii", IntV 2, TyInt);
     
-    ("+", FunV ("x", Fun ("y", IntT, BinOp (Plus, Var "x", Var "y")), ref Env.empty),
+    ("+", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Plus, Var "x", Var "y")), ref Env.empty),
      TyFun (TyInt, TyFun(TyInt, TyInt)));
     
-    ("-", FunV ("x", Fun ("y", IntT, BinOp (Minus, Var "x", Var "y")), ref Env.empty),
+    ("-", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Minus, Var "x", Var "y")), ref Env.empty),
      TyFun (TyInt, TyFun(TyInt, TyInt)));
     
-    ("*", FunV ("x", Fun ("y", IntT, BinOp (Mult, Var "x", Var "y")), ref Env.empty),
+    ("*", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Mult, Var "x", Var "y")), ref Env.empty),
      TyFun (TyInt, TyFun(TyInt, TyInt)));
     
-    ("/", FunV ("x", Fun ("y", IntT, BinOp (Div, Var "x", Var "y")), ref Env.empty),
+    ("/", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Div, Var "x", Var "y")), ref Env.empty),
      TyFun (TyInt, TyFun(TyInt, TyInt)));
     
-    ("<", FunV ("x", Fun ("y", IntT, BinOp (Lt, Var "x", Var "y")), ref Env.empty),
+    ("<", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Lt, Var "x", Var "y")), ref Env.empty),
      TyFun (TyInt, TyFun(TyInt, TyBool)));
   ]
 
