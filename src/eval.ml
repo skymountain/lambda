@@ -78,7 +78,8 @@ let rec eval_exp env = function
         Some (env, exp) -> eval_exp env exp
       | None            -> err "match failure"
     end
-      
+  | Construct _ -> assert false
+
 (* evaluation for recursive def *)
 and eval_rec env var exp =
   match exp with

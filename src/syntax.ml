@@ -48,6 +48,7 @@ type exp =
   | ListLit of exp list
   | TypedExpr of exp * typ      
   | MatchExp of exp * (pat * exp) list
+  | Construct of string
 
 type eval =
     Exp  of exp
@@ -56,7 +57,7 @@ type eval =
 
 type typ_kind =
     TkAlias of typ
-  | TkVariance of (string * typ list) list
+  | TkVariant of (string * typ list) list
 
 type typdef = { td_name: string; td_params: string list; td_kind: typ_kind; }
 

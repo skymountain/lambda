@@ -16,7 +16,11 @@ let rec read_eval_print prompt fun_lexbuf tctx env err =
     let prog = Parser.main Lexer.main @< Lexing.from_function fun_lexbuf in
     match prog with
       EOF -> (tctx, env)
-    | TypDef _ -> assert false
+    | TypDef typdef -> begin
+        let tctx = Typing.define_typ tctx typdef in
+        print_endline "TYPE DEF!";
+        read_eval_print prompt fun_lexbuf tctx env err
+      end
     | Eval e -> begin
         let (tctx, id_typ, typ) = Typing.typing tctx e in
         let (newenv, id ,v) = Eval.eval env e in
@@ -50,32 +54,35 @@ let refill_buffer ch =
   let body buf len = fill_buff buf 0 len in
   body
 
-let init_env binds =
-  List.fold_right (fun (var, v, typ) (acc_env, acc_tenv) ->
-                     (Env.extend acc_env var v, Env.extend acc_tenv var typ))
-    binds (Env.empty, Env.empty)
+let init_ctx binds =
+  let env, tctx =
+    List.fold_right (fun (var, v, typ) (acc_env, acc_tctx) ->
+                       (Env.extend acc_env var v, TypeContext.add_var acc_tctx var typ))
+      binds (Env.empty, TypeContext.empty)
+  in
+  let tctx = Env.fold PredefType.predef_env (fun tctx (ident, typdef) -> TypeContext.insert_typ tctx ident typdef) tctx in
+  (env, tctx)
 
-let (env, tenv) =
-  init_env [
-    ("i", IntV 1, TyInt); ("ii", IntV 2, TyInt);
-    
-    ("+", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Plus, Var "x", Var "y")), ref Env.empty),
-     TyFun (TyInt, TyFun(TyInt, TyInt)));
-    
-    ("-", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Minus, Var "x", Var "y")), ref Env.empty),
-     TyFun (TyInt, TyFun(TyInt, TyInt)));
-    
-    ("*", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Mult, Var "x", Var "y")), ref Env.empty),
-     TyFun (TyInt, TyFun(TyInt, TyInt)));
-    
-    ("/", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Div, Var "x", Var "y")), ref Env.empty),
-     TyFun (TyInt, TyFun(TyInt, TyInt)));
-    
-    ("<", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Lt, Var "x", Var "y")), ref Env.empty),
-     TyFun (TyInt, TyFun(TyInt, TyBool)));
-  ]
+let (env, tctx) =
+  init_ctx
+    [
+      ("i", IntV 1, PredefType.int_typ); ("ii", IntV 2, PredefType.int_typ);
 
-let tctx = { typ_env = tenv; typvar_map = TypvarMap.empty; typdef_env = Env.empty }
+      ("+", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Plus, Var "x", Var "y")), ref Env.empty),
+       TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+
+      ("-", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Minus, Var "x", Var "y")), ref Env.empty),
+       TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+
+      ("*", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Mult, Var "x", Var "y")), ref Env.empty),
+       TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+
+      ("/", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Div, Var "x", Var "y")), ref Env.empty),
+       TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+
+      ("<", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Lt, Var "x", Var "y")), ref Env.empty),
+       TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.bool_typ)));
+    ]
 
 let main () =
   let files = ref [] in

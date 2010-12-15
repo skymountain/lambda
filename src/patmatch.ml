@@ -46,16 +46,34 @@ let rec ematch v = function
         Some env -> Some env
       | _        -> ematch v rpat
     end
-      
-let rec tmatch_const tctx typ c =
-  match typ, c with
-    TyInt, CInt _                      -> true
-  | TyBool, CBool _                    -> true
-  | (TyList _) as typ1, CNullList typ2 -> begin
-      let _, typ2 = map_typ tctx typ2 in
-      eq_typ typ1 typ2
+
+(* let rec proper_typ typ = *)
+(*   match typ with *)
+(*   | TyFun _             -> typ *)
+(*   | TyVariant _         -> typ *)
+(*   | TyVar _             -> typ *)
+(*   | TyAlias (typ, _, _) -> typ *)
+
+let rec tmatch_const tctx typ = function
+    CInt _         -> eq_typ typ PredefType.int_typ
+  | CBool _        -> eq_typ typ PredefType.bool_typ
+  | CNullList ltyp -> begin
+      let _, ltyp = map_typ tctx ltyp in
+      eq_typ ltyp typ
+      (* match proper_typ ltyp with *)
+      (* | TyFun _ | TyVar _    -> assert false (\* XXX *\) *)
+      (* | TyAlias _            -> assert false *)
+      (* | TyVariant (typs, ident) -> Ident.equal ident PredefType.list_ident *)
     end
-  | _                                       -> false
+
+  (* match typ, c with *)
+  (*   TyInt, CInt _                      -> true *)
+  (* | TyBool, CBool _                    -> true *)
+  (* | typ1, CNullList typ2 -> begin *)
+  (*     let _, typ2 = map_typ tctx typ2 in *)
+  (*     eq_typ typ1 typ2 *)
+  (*   end *)
+  (* | _                                       -> false *)
 
 let mem_env env = List.fold_left (fun acc (x, _) -> VarSet.add x acc) VarSet.empty @< Env.list_of env
   
@@ -77,8 +95,8 @@ let eq_env env env' =
     
   
 let typ_of_const tctx = function
-    CInt _ -> TyInt
-  | CBool _ -> TyBool
+    CInt _      -> PredefType.int_typ
+  | CBool _     -> PredefType.bool_typ
   | CNullList t -> snd @< map_typ tctx t
 
 let rec tmatch err tctx typ = function
@@ -94,8 +112,8 @@ let rec tmatch err tctx typ = function
       | Some _ -> err @< Printf.sprintf "variable %s is bound several times" var
     end
   | PList pats -> begin
-      match typ with
-        TyList etyp -> begin
+      match PredefType.etyp_of_list typ with
+      | Some etyp -> begin
           let tenvs = List.map (fun pat -> tmatch err tctx etyp pat) pats in
           List.fold_left
             (fun acc tenv ->
@@ -106,8 +124,8 @@ let rec tmatch err tctx typ = function
       | _ -> err "list pattrns match with only list type"
     end
   | PCons (epat, lpat) -> begin
-      match typ with
-        TyList etyp -> begin
+      match PredefType.etyp_of_list typ with
+        Some etyp -> begin
           let etenv = tmatch err tctx etyp epat in
           let ltenv = tmatch err tctx typ lpat in
           if is_disjoint_env etenv ltenv then Env.extend_by_env etenv ltenv

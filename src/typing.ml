@@ -2,14 +2,16 @@ open Misc
 open Syntax
 open Types
 open Type
+open TypeContext
+open TypeDef
 
 exception Typing_error of string
 let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
   
 (* typing for constant *)
 let typ_const tctx = function
-    CInt _ -> (tctx.typvar_map, TyInt)
-  | CBool _ -> (tctx.typvar_map, TyBool)
+    CInt _ -> (typvar_map tctx, PredefType.int_typ)
+  | CBool _ -> (typvar_map tctx, PredefType.bool_typ)
   | CNullList typ -> begin
       match typ with
         NameT _ -> map_typ tctx typ
@@ -18,25 +20,18 @@ let typ_const tctx = function
 
 (* typing for binary operator *)
 let typ_binop typ1 typ2 = function
-    (Plus | Minus | Mult | Div) as op ->
-      if typ1 = TyInt && typ2 = TyInt then TyInt
-      else err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
-  | Lt ->
-      if typ1 = TyInt && typ2 = TyInt then TyBool
-      else err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop Lt
+    (Plus | Minus | Mult | Div| Lt ) -> assert false
   | Cons -> begin
-      match typ2 with
-        TyList etyp ->
-          if eq_typ typ1 etyp then TyList etyp
-          else err @< Printf.sprintf "element types of %s must be same types" @< str_of_binop Cons
-      | _ -> err @< Printf.sprintf "right-side of %s must be list type" @< str_of_binop Cons
+      let ltyp = TypeDef.inst PredefType.list_typdef [typ1] in
+      if eq_typ ltyp typ2 then typ2
+      else err @< Printf.sprintf "element types of %s must be same types" @< str_of_binop Cons
     end
 
 (* typing for exp *)
 let rec typ_exp tctx = function
     Var var -> begin
-      match Env.lookup tctx.typ_env var with
-        Some t -> (tctx.typvar_map, t)
+      match lookup_var tctx var with
+        Some t -> (typvar_map tctx, t)
       | None   -> err @< Printf.sprintf "%s is not bound" var
     end
 
@@ -44,110 +39,165 @@ let rec typ_exp tctx = function
       typ_const tctx c
 
   | BinOp (op, exp1, exp2) -> begin
-      let typvar_map, typ1 = typ_exp tctx exp1 in
-      let tctx = { tctx with typvar_map = typvar_map } in
-      let typvar_map, typ2 = typ_exp tctx exp2 in
-      (typvar_map, typ_binop typ1 typ2 op)
+      let tvmap, typ1 = typ_exp tctx exp1 in
+      let tctx = update_typvar_map tctx tvmap in
+      let tvmap, typ2 = typ_exp tctx exp2 in
+      (tvmap, typ_binop typ1 typ2 op)
     end
 
   | IfExp (cond, then_exp, else_exp) -> begin
       match typ_exp tctx cond with
-        (typvar_map, TyBool) -> begin
-          let typvar_map, then_typ = typ_exp { tctx with typvar_map = typvar_map } then_exp in
-          let typvar_map, else_typ = typ_exp { tctx with typvar_map = typvar_map } else_exp in
-          if eq_typ then_typ else_typ then (typvar_map, then_typ)
+        (tvmap, cond_typ) when eq_typ cond_typ PredefType.bool_typ -> begin
+          let tvmap, then_typ = typ_exp (update_typvar_map tctx tvmap) then_exp in
+          let tvmap, else_typ = typ_exp (update_typvar_map tctx tvmap) else_exp in
+          if eq_typ then_typ else_typ then (tvmap, then_typ)
           else err "types of then and else expressions must be same"
         end
       | _ -> err "type of conditional expression must be boolean"
     end
 
   | Fun (var, typ, body) ->
-      let typvar_map, typ = map_typ tctx typ in
-      let tctx = { tctx with typ_env = Env.extend tctx.typ_env var typ; typvar_map = typvar_map } in
-      let typvar_map, btyp = typ_exp tctx body in
-      (typvar_map, TyFun (typ, btyp))
+      let tvmap, typ = map_typ tctx typ in
+      let tctx = (update_typvar_map tctx tvmap) in
+      let tctx = add_var tctx var typ in
+      let tvmap, btyp = typ_exp tctx body in
+      (tvmap, TyFun (typ, btyp))
 
   | App (exp1, exp2) -> begin
       match typ_exp tctx exp1 with
-        (typvar_map, TyFun (arg_typ, ret_typ)) ->
-          let typvar_map, arg_typ' = typ_exp { tctx with typvar_map = typvar_map } exp2 in
-          if eq_typ arg_typ arg_typ' then (typvar_map, ret_typ)
+        (tvmap, TyFun (arg_typ, ret_typ)) ->
+          let tctx = update_typvar_map tctx tvmap in
+          let tvmap, arg_typ' = typ_exp tctx exp2 in
+          if eq_typ arg_typ arg_typ' then (tvmap, ret_typ)
           else err "type of actual argument must correspond with one of formal argument"
       | _ -> err "only function type can be applied"
     end
 
   | Let (var, exp, body) ->
-      let typvar_map, typ = typ_exp tctx exp in
-      let tctx = { tctx with typ_env = Env.extend tctx.typ_env var typ; typvar_map = typvar_map } in
+      let tvmap, typ = typ_exp tctx exp in
+      let tctx = update_typvar_map tctx tvmap in
+      let tctx = add_var tctx var typ in
       typ_exp tctx body
 
   | LetRec (var, typ, exp, body) ->
-      let typvar_map, typ = typ_letrec tctx var typ exp in
-      let tctx = { tctx with typ_env = Env.extend tctx.typ_env var typ; typvar_map = typvar_map } in
+      let tvmap, typ = typ_letrec tctx var typ exp in
+      let tctx = update_typvar_map tctx tvmap in
+      let tctx = add_var tctx var typ in
       typ_exp tctx body
 
   | ListLit exps -> begin
-      let typvar_map, typs = List.fold_right
-        (fun exp (typvar_map, typs) ->
-           let typvar_map, typ = typ_exp { tctx with typvar_map = typvar_map } exp in
-           (typvar_map, typ::typs))
-        exps (tctx.typvar_map, [])
+      let tctx, typs = List.fold_right
+        (fun exp (tctx, typs) ->
+           let tvmap, typ = typ_exp tctx exp in
+           (update_typvar_map tctx tvmap, typ::typs))
+        exps (tctx, [])
       in
       let typ, typs = match typs with typ::typs -> (typ, typs) | _ -> assert false in (* assume exps is not empty *)
       List.iter (fun typ' -> if not (eq_typ typ typ') then err "element types of list must be same") typs;
-      (typvar_map, TyList typ)
+      (typvar_map tctx, TypeDef.inst PredefType.list_typdef [typ])
     end
 
   | TypedExpr (exp, typ) -> begin
-      let typvar_map, typ' = typ_exp tctx exp in
-      let typvar_map, typ = map_typ { tctx with typvar_map = typvar_map } typ in
-      if eq_typ typ typ' then (typvar_map, typ)
+      let tvmap, typ' = typ_exp tctx exp in
+      let tvmap, typ = map_typ (update_typvar_map tctx tvmap) typ in
+      if eq_typ typ typ' then (tvmap, typ)
       else err "expression's type doesn't cossrespond with the specified type"
     end
 
   | MatchExp (exp, branches) -> begin
-      let typvar_map, typ = typ_exp tctx exp in
-      let rec iter typvar_map cond_typ = function
+      let tvmap, typ = typ_exp tctx exp in
+      let rec iter tctx cond_typ = function
           [(pat, body)] -> begin
-            let tctx = { tctx with typvar_map = typvar_map } in
             let tenv = Patmatch.tmatch err tctx cond_typ pat in
             let tctx = { tctx with typ_env = Env.extend_by_env tctx.typ_env tenv } in
             typ_exp tctx  body
           end
         | (pat, body)::t -> begin
-            let tenv = Env.extend_by_env tctx.typ_env @< Patmatch.tmatch err tctx cond_typ pat in
-            let typvar_map ,btyp = typ_exp { tctx with typ_env = tenv; typvar_map = typvar_map } body in
-            let typvar_map, btyp' = iter typvar_map cond_typ t in
-            if eq_typ btyp btyp' then (typvar_map, btyp)
+            let extended_tctx = extend_typ_env tctx @< Patmatch.tmatch err tctx cond_typ pat in
+            let tvmap ,btyp = typ_exp extended_tctx body in
+            let tctx = update_typvar_map tctx tvmap in
+            let tvmap, btyp' = iter tctx cond_typ t in
+            if eq_typ btyp btyp' then (tvmap, btyp)
             else err @< Printf.sprintf "%s doesn't match with %s: all branch expresions must be same types"
               (pps_typ btyp) (pps_typ btyp')
           end
         | _ -> assert false
       in
-      iter typvar_map typ branches
+      iter tctx typ branches
     end
+  | Construct _ -> assert false
 
 (* typing for let-rec *)
 and typ_letrec tctx var typ exp =
-  let typvar_map, typ = map_typ tctx typ in
+  let tvmap, typ = map_typ tctx typ in
   match exp, typ with
     Fun _, TyFun _ -> begin
-      let typvar_map, etyp = typ_exp { tctx with typ_env = Env.extend tctx.typ_env var typ; typvar_map = typvar_map } exp in
-      if eq_typ typ etyp then (typvar_map, etyp)
+      let tctx = update_typvar_map tctx tvmap in
+      let tctx = add_var tctx var typ in
+      let tvmap, etyp = typ_exp tctx exp in
+      if eq_typ typ etyp then (tvmap, etyp)
       else err "expression's type doesn't cossrespond with the specified type"
     end
   | _ -> err "only values which are functions can be defined recursively"
 
 (* typing for program *)
 let typing tctx =
-  let return tenv var (typvar_map, typ) =
-    { tctx with
-      typ_env    = Env.extend tenv var typ;
-      typvar_map = typvar_map;
-    },
-    var, typ;
+  let return tctx var (_, typ) =
+    let tctx = add_var tctx var typ in
+    (refresh_typvar_map tctx, var, typ);
   in
   function
-    Exp exp -> return tctx.typ_env "it" @< typ_exp tctx exp
-  | Decl (var, exp) -> return tctx.typ_env var @< typ_exp tctx exp
-  | DeclRec (var, typ, exp) -> return tctx.typ_env var @< typ_letrec tctx var typ exp
+    Exp exp -> return tctx "it" @< typ_exp tctx exp
+  | Decl (var, exp) -> return tctx var @< typ_exp tctx exp
+  | DeclRec (var, typ, exp) -> return tctx var @< typ_letrec tctx var typ exp
+
+
+module StringSet = Set.Make(String)
+let rec funtyp_of = function
+    [] -> assert false
+  | typ::[] -> typ
+  | typ::typs -> TyFun (typ, (funtyp_of typs))
+
+let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Syntax.td_kind = kind } =
+  let tvmap, tvlist = List.fold_right
+    (fun param (tvmap, tvlist) ->
+       if TypvarMap.mem tvmap param then err "you must specify different parameters as type variables"
+       else
+         let tvmap = TypvarMap.add tvmap param in
+         let typvar = match TypvarMap.find tvmap param with Some tv -> tv | _ -> assert false in
+         (tvmap, typvar::tvlist))
+    params (TypvarMap.empty, [])
+  in
+  let tctx = update_typvar_map tctx tvmap in
+  let arity = List.length params in
+  let ident = Ident.create typ_name in
+  let td_kind =
+    match kind with
+    | Syntax.TkAlias typ -> begin
+        let tvmap', typ = map_typ tctx typ in
+        if not (TypvarMap.equal tvmap tvmap') then err "there are type variables which weren't specified as parameters"
+        else TkAlias typ
+      end
+    | Syntax.TkVariant ((_::_) as constrs) -> begin
+        (* XXX: recursive definition *)
+        let variant_typ = TyVariant (List.map (fun x -> TyVar x) @< newtypvar_list arity, ident) in
+        let _, constrs, tctx =
+          List.fold_left (fun (set, constrs, tctx) (constr_name, typs) ->
+                            if StringSet.mem constr_name set then err "you must specify different variant constructors"
+                            else
+                              let set = StringSet.add constr_name set in
+                              let tctx, typs = map_typs tctx typs in
+                              let constrs = (constr_name, typs)::constrs in
+                              (set, constrs, update_typvar_map tctx tvmap))
+            (StringSet.empty, [], tctx) constrs
+        in
+        if not (TypvarMap.equal (typvar_map tctx) tvmap) then err "there are type variables which weren't specified as parameters"
+        else
+          let constrs = List.map (fun (constr_name, typs) -> (constr_name, funtyp_of (typs @ [variant_typ]))) constrs in
+          TkVariant constrs
+      end
+    | Syntax.TkVariant [] -> assert false
+  in
+  let typdef = { TypeDef.td_params = tvlist; td_arity = arity; td_kind = td_kind; td_id = ident } in
+  let tctx = refresh_typvar_map tctx in
+  TypeContext.insert_typ tctx ident typdef

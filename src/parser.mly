@@ -82,11 +82,12 @@ SExpr:
 | LPAREN Expr RPAREN { $2 }
 | LPAREN Expr COLON TypeExpr RPAREN
                      { TypedExpr ($2, $4) }
+| UIDENT             { Construct $1 }
 
 AppExpr:
   AppExpr SExpr { App ($1, $2) }
 | SExpr { $1 }
-      
+
 ConstExpr:
   INTLIT            { CInt $1 }
 | TRUE              { CBool true }
@@ -156,26 +157,26 @@ TypeParameter:
 
 TypeDefinition:
   TypeExpr                  { TkAlias $1 }
-| VariantDefinitionList     { TkVariance $1 }
+| VariantDefinitionList     { TkVariant $1 }
 
 VariantDefinitionList:
   VariantDefinition                            { [$1] }
 | VariantDefinition VBAR VariantDefinitionList { $1::$3 }
 
 VariantDefinition:
-  UIDENT { ($1, []) }
+  UIDENT                 { ($1, []) }
 | UIDENT OF TypeExprList { ($1, $3) }
 
-TypeExpr:
-  TypeExprListOrEmpty LIDENT { NameT ($1, $2) }
-| TypeParameter              { VarT $1 }
-| TypeExpr RARROW TypeExpr   { FunT ($1, $3) }
-| LPAREN TypeExpr RPAREN     { $2 }
 
-TypeExprListOrEmpty:
-                              { [] }
-| TypeExpr                    { [$1] }
-| LPAREN TypeExprList RPAREN  { $2 }
+TypeExpr:
+  TypeExpr RARROW TypeExpr          { FunT ($1, $3) }
+| TypeExpr_                         { $1 }
+TypeExpr_:
+  LIDENT                            { NameT ([], $1) }
+| TypeExpr_ LIDENT                  { NameT ([$1], $2) }
+| LPAREN TypeExprList RPAREN LIDENT { NameT ($2, $4) }
+| TypeParameter                     { VarT $1 }
+| LPAREN TypeExpr RPAREN            { $2 }
 
 TypeExprList:
   TypeExpr                    { [$1] }
