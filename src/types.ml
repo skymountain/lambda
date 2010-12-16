@@ -18,14 +18,7 @@ let rec newtypvar_list = function
   | _ -> assert false
 
 (* type variable *)
-let fresh_typvar =
-  let id = ref 0 in
-  let f () =
-    let new_id = !id in
-    id := !id + 1;
-    TyVar new_id
-  in
-  f
+let fresh_typvar () = TyVar (newtypvar ())
       
 let rec replace_tyvar assoc = function
   | TyFun (atyp, rtyp)          -> TyFun (replace_tyvar assoc atyp, replace_tyvar assoc rtyp)
