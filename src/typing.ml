@@ -153,7 +153,7 @@ let typing tctx =
   | DeclRec (var, typ, exp) -> return tctx var @< typ_letrec tctx var typ exp
 
 
-module StringSet = Set.Make(String)
+module ConstrSet = Set.Make(String)
 let rec funtyp_of = function
     [] -> assert false
   | typ::[] -> typ
@@ -184,13 +184,13 @@ let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Synt
         let variant_typ = TyVariant (List.map (fun x -> TyVar x) @< newtypvar_list arity, ident) in
         let _, constrs, tctx =
           List.fold_left (fun (set, constrs, tctx) (constr_name, typs) ->
-                            if StringSet.mem constr_name set then err "you must specify different variant constructors"
+                            if ConstrSet.mem constr_name set then err "you must specify different variant constructors"
                             else
-                              let set = StringSet.add constr_name set in
+                              let set = ConstrSet.add constr_name set in
                               let tctx, typs = map_typs tctx typs in
                               let constrs = (constr_name, typs)::constrs in
                               (set, constrs, update_typvar_map tctx tvmap))
-            (StringSet.empty, [], tctx) constrs
+            (ConstrSet.empty, [], tctx) constrs
         in
         if not (TypvarMap.equal (typvar_map tctx) tvmap) then err "there are type variables which weren't specified as parameters"
         else

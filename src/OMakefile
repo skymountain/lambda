@@ -34,6 +34,7 @@ FILES[] =
 	ident
 	syntax
 	types
+	common
 	typeDef
 	typvarMap
 	typeContext

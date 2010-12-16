@@ -1,12 +1,13 @@
 open OptionMonad
 open Misc
+open Common
 open Syntax
 open Value
 open Types
 open Type
 open Printtype
 
-module VarSet = Set.Make(String)
+module VariableSet = Set.Make(String)
 
 let ematch_const v c =
   match (v, c) with
@@ -56,25 +57,22 @@ let rec tmatch_const tctx typ = function
       eq_typ ltyp typ
     end
 
-let mem_env env = List.fold_left (fun acc (x, _) -> VarSet.add x acc) VarSet.empty @< Env.list_of env
-  
 let is_disjoint_env env env' =
-  let mem, mem' = mem_env env, mem_env env' in
-  let card, card' = VarSet.cardinal mem, VarSet.cardinal mem' in
-  let sum = VarSet.cardinal @< VarSet.union mem mem' in
+  let mem, mem' = Env.members env, Env.members env' in
+  let card, card' = VariableSet.cardinal mem, VariableSet.cardinal mem' in
+  let sum = VariableSet.cardinal @< VariableSet.union mem mem' in
   sum = card + card'
 
 let eq_env env env' =
-  let mem, mem' = mem_env env, mem_env env' in
-  VarSet.equal mem mem' &&
+  let mem, mem' = Env.members env, Env.members env' in
+  VariableSet.equal mem mem' &&
     Env.fold env
     (fun eq (var, typ) -> eq &&
        match Env.lookup env' var with
          Some typ' -> eq_typ typ typ'
        | _         -> false)
     true
-    
-  
+
 let typ_of_const tctx = function
     CInt _      -> PredefType.int_typ
   | CBool _     -> PredefType.bool_typ

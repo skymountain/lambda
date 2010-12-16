@@ -1,10 +1,9 @@
-type tyvar = int
-type typid = int
+type typvar = int
 type constr_id = int
 
 and typ =
   | TyFun     of typ * typ
-  | TyVar     of tyvar
+  | TyVar     of typvar
   | TyVariant of typ list * Ident.t
   | TyAlias   of typ * typ list * Ident.t
 

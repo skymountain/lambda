@@ -1,7 +1,7 @@
 open Types
 
 type typdef = {
-  td_params : tyvar list;
+  td_params : typvar list;
   td_arity  : int;
   td_kind   : typ_kind;
   td_id     : Ident.t;
