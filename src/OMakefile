@@ -32,11 +32,17 @@ FILES[] =
 	optionMonad
 	common
 	env
+	ident
 	syntax
-	value
-	type
+	types
 	typeScheme
-	printtyp
+	typeDef
+	typvarMap
+	typeContext
+	predefType
+	type
+	printtype
+	value
 	parser
 	lexer
 	subst

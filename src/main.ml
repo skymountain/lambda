@@ -2,33 +2,38 @@ open Misc
 open Syntax
 open Value
 open Common
+open Types
+open Type
+open TypeScheme
+open Printtype
 
 exception Exit
   
 let err s = print_endline s 
 let p_msg s = print_endline s
   
-let rec read_eval_print prompt fun_lexbuf tenv env err =
+let rec read_eval_print prompt fun_lexbuf tctx env err =
   print_string prompt;
   flush stdout;
-  try 
+  try
     let prog = Parser.main Lexer.main @< Lexing.from_function fun_lexbuf in
     match prog with
-      EOF -> (tenv, env)
-    | _   -> begin
-        let (newtenv, id_typ, typ_scheme) = Typing.typing tenv prog in
-        let (newenv, id ,v) = Eval.eval env prog in
+      EOF -> (tctx, env)
+    | TypDef typdef -> begin
+        let tctx = Typing.define_typ tctx typdef in
+        print_endline "TYPE DEF!";
+        read_eval_print prompt fun_lexbuf tctx env err
+      end
+    | Eval e -> begin
+        let (tctx, id_typ, typ) = Typing.typing tctx e in
+        let (newenv, id ,v) = Eval.eval env e in
         assert (id_typ = id);
-        print_string @< "val "^id;
-        print_string " : ";
-        Printtyp.pp_typscheme typ_scheme;
-        print_string " = ";
-        pp_val v;
+        Printf.printf "val %s : %s = %s" id (pps_typscheme typ) (pps_val v);
         print_newline ();
-        read_eval_print prompt fun_lexbuf newtenv newenv err
+        read_eval_print prompt fun_lexbuf tctx newenv err
       end
   with
-    e -> let f s = err s; read_eval_print prompt fun_lexbuf tenv env err in
+    e -> let f s = err s; read_eval_print prompt fun_lexbuf tctx env err in
     (match e with
        Parsing.Parse_error   -> f "Syntax error" 
      | Lexer.Lexical_error s -> f s
@@ -52,27 +57,36 @@ let refill_buffer ch =
   let body buf len = fill_buff buf 0 len in
   body
 
-let extend env tenv var exp =
-  let prog = Decl (var, exp) in
-  let tenv, _, _ = Typing.typing tenv prog in
-  let env, _, _ = Eval.eval env prog in
-  (env, tenv)
-    
-let (env, tenv) =
-  List.fold_left (fun (env, tenv) (var, exp) -> extend env tenv var exp)
-    (Env.empty, Env.empty)
+let init_ctx binds =
+  let env, tctx =
+    List.fold_right (fun (var, v, typ) (acc_env, acc_tctx) ->
+                       (Env.extend acc_env var v, TypeContext.add_var acc_tctx var typ))
+      binds (Env.empty, TypeContext.empty)
+  in
+  let tctx = Env.fold PredefType.predef_env (fun tctx (ident, typdef) -> TypeContext.insert_typ tctx ident typdef) tctx in
+  (env, tctx)
+
+let (env, tctx) =
+  init_ctx
     [
-      ("i", Const (CInt 1));
-      ("ii", Const (CInt 2));
-      ("id", Fun ("x", Type.fresh_typvar (), Var "x"));
-      
-      ("+", Fun ("x", IntT, Fun ("y", IntT, BinOp (Plus, Var "x", Var "y"))));
-      ("-", Fun ("x", IntT, Fun ("y", IntT, BinOp (Minus, Var "x", Var "y"))));
-      ("*", Fun ("x", IntT, Fun ("y", IntT, BinOp (Mult, Var "x", Var "y"))));
-      ("/", Fun ("x", IntT, Fun ("y", IntT, BinOp (Div, Var "x", Var "y"))));
-      ("<", Fun ("x", IntT, Fun ("y", IntT, BinOp (Lt, Var "x", Var "y"))));
+      ("i", IntV 1, monotyp PredefType.int_typ); ("ii", IntV 2, monotyp PredefType.int_typ);
+
+      ("+", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Plus, Var "x", Var "y")), ref Env.empty),
+       monotyp @< TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+
+      ("-", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Minus, Var "x", Var "y")), ref Env.empty),
+       monotyp @< TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+
+      ("*", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Mult, Var "x", Var "y")), ref Env.empty),
+       monotyp @< TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+
+      ("/", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Div, Var "x", Var "y")), ref Env.empty),
+       monotyp @< TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
+
+      ("<", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Lt, Var "x", Var "y")), ref Env.empty),
+       monotyp @< TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.bool_typ)));
     ]
-  
+
 let main () =
   let files = ref [] in
   let interact = ref None in
@@ -91,13 +105,13 @@ let main () =
   in
   let ins = List.append files @< if interact then [(stdin, (fun s -> err s), None, "> ")] else [] in
   List.fold_left
-    (fun (tenv, env) (ichann, err, file, prompt) ->
+    (fun (tctx, env) (ichann, err, file, prompt) ->
        (* print file name *)
        (match file with
           None -> ()
         | Some file -> p_msg @< Printf.sprintf "will load %s" file);
-       read_eval_print prompt (refill_buffer ichann) tenv env err)
-    (tenv, env)
+       read_eval_print prompt (refill_buffer ichann) tctx env err)
+    (tctx, env)
     ins
 
 let _ = try ignore @< main () with Exit -> ();

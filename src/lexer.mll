@@ -8,8 +8,6 @@
   let reserv_words = [
     ("let",   Parser.LET);
     ("in",    Parser.IN);
-    ("int",   Parser.INT);
-    ("bool",  Parser.BOOL);
     ("true",  Parser.TRUE);
     ("false", Parser.FALSE);
     ("if",    Parser.IF);
@@ -21,17 +19,22 @@
     ("begin", Parser.BEGIN);
     ("end",   Parser.END);
     ("as",    Parser.AS);
-    ("list",  Parser.LIST);
+    ("of",    Parser.OF);
+    ("type",  Parser.TYPE);
   ]
 }
 
-let alphabet  = ['a'-'z']
-let ident_top = ['a'-'z' '_']
-let ident_bdy = ['a'-'z' '_' '\'' '0'-'9']
-let blank = [' ' '\009' '\012' '\n']
+let lower_alphabet = ['a'-'z' '_']
+let upper_alphabet = ['A'-'Z']
+let alphabet       = lower_alphabet | upper_alphabet
+let digit          = ['0'-'9']
+let letter         = ['a'-'z' 'A'-'Z']
+let symbolchar     = ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~' ]
 
-let symbolchar = ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~' ]
-  
+let lower_ident    = lower_alphabet (alphabet | digit | '\'')*
+let upper_ident    = upper_alphabet (alphabet | digit | '\'')*
+let blank          = [' ' '\009' '\012' '\n']
+
 rule main = parse
   blank+ { main lexbuf }
 | '\\'   { Parser.BACKSLA }
@@ -45,11 +48,13 @@ rule main = parse
 | '|'    { Parser.VBAR }
 | ';'    { Parser.SEMICOLON }
 | '_'    { Parser.UNDERBAR }
+| ','    { Parser.COMMA }
+| '\''   { Parser.QUOTE }
 | "->"   { Parser.RARROW }
 | ";;"   { Parser.SEMICOLON2 }
 | "::"   { Parser.COLON2 }
-      
-| "-"? [ '0'-'9' ]+
+
+| "-"? digit+
       {
         let s = Lexing.lexeme lexbuf in
         try Parser.INTLIT (int_of_string s) with
@@ -68,16 +73,17 @@ rule main = parse
           { INFIXOP3 (Lexing.lexeme lexbuf) }
 | "**" symbolchar*
           { INFIXOP4 (Lexing.lexeme lexbuf) }
-          
-| ident_top ident_bdy*
-         {
-           let s = Lexing.lexeme lexbuf in
-           try List.assoc s reserv_words with
-             Not_found -> IDENT s
-         }
-| "(*"   { comment 0 lexbuf; main lexbuf }
-| eof    { EOF }
-| _      { err (Printf.sprintf "unknown token %s" @< Lexing.lexeme lexbuf) }
+| lower_ident
+          {
+            let s = Lexing.lexeme lexbuf in
+            try List.assoc s reserv_words with
+              Not_found -> LIDENT s
+          }
+| upper_ident
+          { UIDENT (Lexing.lexeme lexbuf) }
+| "(*"    { comment 0 lexbuf; main lexbuf }
+| eof     { EOF }
+| _       { err (Printf.sprintf "unknown token %s" @< Lexing.lexeme lexbuf) }
       
 and comment depth = parse
     "*)" { if depth = 0 then () else comment (depth-1) lexbuf }

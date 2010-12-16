@@ -1,3 +1,4 @@
+open Common
 open Misc
   
 type 'a t = 'a list
@@ -33,3 +34,6 @@ let rec fold env f x = List.fold_left f x env
 (* if there are same variables between env and env', the value is in env' *)
 let extend_by_env env env' =
   extendl env @< list_of env'
+
+let members env =
+  fold env (fun acc (x, _) -> VariableSet.add x acc) VariableSet.empty

@@ -7,19 +7,22 @@
 %token RARROW COLON
 %token EQ
 %token LET IN
-%token INT
-%token BOOL TRUE FALSE
+%token TRUE FALSE
 %token IF THEN ELSE
 %token REC
-%token LIST LSQPAREN RSQPAREN SEMICOLON COLON2
+%token LSQPAREN RSQPAREN SEMICOLON COLON2
 %token BEGIN END
 %token MATCH WITH VBAR
 %token UNDERBAR
 %token AS
 %token<Syntax.id> PREFIXOP INFIXOP0 INFIXOP1 INFIXOP2 INFIXOP3 INFIXOP4
-  
-%token<Syntax.id> IDENT
+%token<Syntax.id> LIDENT
+%token<Syntax.id> UIDENT
 %token<int> INTLIT
+%token COMMA
+%token OF
+%token QUOTE
+%token TYPE
 %token EOF
 
 %nonassoc IN
@@ -38,27 +41,31 @@
 %left INFIXOP3
 %right INFIXOP4
 %nonassoc LIST PREFIXOP
-  
 %start main
 %type<Syntax.program> main
 %%
   
 main:
-  Expr SEMICOLON2 { Exp $1 }
-| LET Ident EQ Expr SEMICOLON2                    { Decl ($2, $4) }
-| LET REC Ident COLON TypeExpr EQ Expr SEMICOLON2 { DeclRec ($3, $5, $7) }
-| LET REC Ident EQ Expr SEMICOLON2                { DeclRec ($3, Type.fresh_typvar (), $5) }
-| EOF { Syntax.EOF }
+  Eval SEMICOLON2    { Eval $1 }
+| TypeDef SEMICOLON2 { TypDef $1 }
+| EOF                { Syntax.EOF }
+
+Eval:
+  Expr                                 { Exp $1 }
+| LET Ident EQ Expr                    { Decl ($2, $4) }
+| LET REC Ident COLON TypeExpr EQ Expr { DeclRec ($3, $5, $7) }
+| LET REC Ident EQ Expr SEMICOLON2     { DeclRec ($3, Syntax.fresh_typvar (), $5) }
 
 Expr:
   SExpr { $1 }
 | AppExpr SExpr { App ($1, $2) }
       
 | BACKSLA Ident COLON TypeExpr DOT Expr        { Fun ($2, $4, $6) }
-| BACKSLA Ident DOT Expr                       { Fun ($2, Type.fresh_typvar (), $4) }
+| BACKSLA Ident DOT Expr                       { Fun ($2, Syntax.fresh_typvar (), $4) }
+
 | LET Ident EQ Expr IN Expr                    { Let ($2, $4, $6) }
 | LET REC Ident COLON TypeExpr EQ Expr IN Expr { LetRec ($3, $5, $7, $9) }
-| LET REC Ident EQ Expr IN Expr                { LetRec ($3, Type.fresh_typvar (), $5, $7) }
+| LET REC Ident EQ Expr IN Expr                { LetRec ($3, Syntax.fresh_typvar (), $5, $7) }
 | IF Expr THEN Expr ELSE Expr                  { IfExp ($2, $4, $6) }
 | MATCH Expr WITH MatchExpr                    { MatchExp ($2, $4) }
       
@@ -69,7 +76,7 @@ Expr:
 | Expr INFIXOP4 Expr { App (App (Var $2, $1), $3) }
 | Expr EQ       Expr { App (App (Var "=", $1), $3) }
 | Expr COLON2 Expr   { BinOp (Cons,  $1, $3) }
-      
+
 SExpr:
   PREFIXOP SExpr     { App (Var $1, $2) }
 | ConstExpr          { Const $1 }
@@ -78,23 +85,24 @@ SExpr:
 | LPAREN Expr RPAREN { $2 }
 | LPAREN Expr COLON TypeExpr RPAREN
                      { TypedExpr ($2, $4) }
+| UIDENT             { Construct $1 }
 
 AppExpr:
   AppExpr SExpr { App ($1, $2) }
 | SExpr { $1 }
-      
+
 ConstExpr:
   INTLIT            { CInt $1 }
 | TRUE              { CBool true }
 | FALSE             { CBool false }
-| LSQPAREN RSQPAREN { CNullList }
+| LSQPAREN RSQPAREN { CNullList (Syntax.fresh_typvar ()) }
 
 ListExpr:
   LSQPAREN SeqExpr RSQPAREN { $2 }
 
 SeqExpr:
   Expr SEMICOLON SeqExpr { BinOp (Cons, $1, $3) }
-| Expr  { BinOp (Cons, $1, Const CNullList) }
+| Expr  { BinOp (Cons, $1, Const (CNullList (Syntax.fresh_typvar ()))) }
   
 MatchExpr:
   MatchExpr_ VBAR MatchExpr   { $1::$3 }
@@ -114,24 +122,17 @@ PatternExpr:
 | LPAREN PatternExpr RPAREN      { $2 }
       
 PListExpr:
-  PListExpr_ { PCons ($1, PConst CNullList) }
+  PListExpr_ { PCons ($1, PConst (CNullList (Syntax.fresh_typvar ()))  ) }
 | PListExpr_ SEMICOLON PListExpr { PCons ($1, $3) }
-      
+
 PListExpr_:
   PatternExpr { $1 }
-      
-TypeExpr:
-  INT                      { IntT }
-| BOOL                     { BoolT }
-| TypeExpr LIST            { ListT $1 }
-| TypeExpr RARROW TypeExpr { FunT ($1, $3) }
-| LPAREN TypeExpr RPAREN   { $2 }
 
 Ident:
-  IDENT                  { $1 }
-| LPAREN operator RPAREN { $2 }
+  LIDENT                 { $1 }
+| LPAREN Operator RPAREN { $2 }
 
-operator:
+Operator:
   PREFIXOP { $1 }
 | INFIXOP0 { $1 }
 | INFIXOP1 { $1 }
@@ -139,3 +140,45 @@ operator:
 | INFIXOP3 { $1 }
 | INFIXOP4 { $1 }
 | EQ       { "=" }
+
+TypeDef:
+  TYPE TypeParams LIDENT EQ TypeDefinition { { td_name = $3; td_params = $2; td_kind = $5 } }
+
+TypeParams:
+                            { [] }
+| TypeParameter             { [$1] }
+| LPAREN TypeParams_ RPAREN { $2 }
+TypeParams_:
+  TypeParameter                   { [$1] }
+| TypeParameter COMMA TypeParams_ { $1::$3 }
+
+TypeParameter:
+  QUOTE LIDENT              { $2 }
+| QUOTE UIDENT              { $2 }
+
+TypeDefinition:
+  TypeExpr                  { TkAlias $1 }
+| VariantDefinitionList     { TkVariant $1 }
+
+VariantDefinitionList:
+  VariantDefinition                            { [$1] }
+| VariantDefinition VBAR VariantDefinitionList { $1::$3 }
+
+VariantDefinition:
+  UIDENT                 { ($1, []) }
+| UIDENT OF TypeExprList { ($1, $3) }
+
+
+TypeExpr:
+  TypeExpr RARROW TypeExpr          { FunT ($1, $3) }
+| TypeExpr_                         { $1 }
+TypeExpr_:
+  LIDENT                            { NameT ([], $1) }
+| TypeExpr_ LIDENT                  { NameT ([$1], $2) }
+| LPAREN TypeExprList RPAREN LIDENT { NameT ($2, $4) }
+| TypeParameter                     { VarT $1 }
+| LPAREN TypeExpr RPAREN            { $2 }
+
+TypeExprList:
+  TypeExpr                    { [$1] }
+| TypeExpr COMMA TypeExprList { $1::$3 }

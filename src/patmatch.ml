@@ -1,19 +1,24 @@
 open OptionMonad
 open Misc
+open Common
 open Syntax
 open Value
+open Subst
+open Types
+open Type
+open TypeContext
+open PredefType
+open Printtype
 open Subst
 
 let monotyp = TypeScheme.monotyp
 let typ = TypeScheme.typ
 
-module VarSet = Set.Make(String)
-
 let ematch_const v c =
   match (v, c) with
     IntV i, CInt i' when i = i'   -> true
   | BoolV b, CBool b' when b = b' -> true
-  | ListV [], CNullList           -> true
+  | ListV [], CNullList _         -> true
   | _, _                          -> false
 
 let rec ematch v = function
@@ -36,45 +41,60 @@ let rec ematch v = function
         Some env -> Some env
       | _        -> ematch v rpat
     end
-      
-let mem_env env = List.fold_left (fun acc (x, _) -> VarSet.add x acc) VarSet.empty @< Env.list_of env
-  
-let rec tmatch err tenv subst = function
-    PVar var -> if Env.mem tenv var then err @< Printf.sprintf "variable %s is bound several times in a pattern" var
-    else
-      let typ = Type.fresh_typvar () in
-      (Env.extend tenv var @< monotyp typ, subst, typ)
-  | WildCard -> (tenv, subst, Type.fresh_typvar ())
-  | PConst c -> (tenv, subst, Type.of_const c)
+
+let rec tmatch_const tctx subst typ const =
+  let matched = match const with
+    | CInt _         -> (tctx, unify subst typ PredefType.int_typ)
+    | CBool _        -> (tctx, unify subst typ PredefType.bool_typ)
+    | CNullList ltyp -> begin
+        let tvmap, ltyp = map_typ tctx ltyp in
+        let tctx = update_typvar_map tctx tvmap in
+        match unify subst ltyp typ with
+          Some subst -> (tctx, Some subst)
+        | None -> (tctx, None)
+      end
+  in
+  match matched with
+    (_, None) -> None
+  | (tctx, Some subst) -> Some (tctx, subst)
+
+let is_disjoint_env env env' =
+  let mem, mem' = Env.members env, Env.members env' in
+  let card, card' = VariableSet.cardinal mem, VariableSet.cardinal mem' in
+  let sum = VariableSet.cardinal @< VariableSet.union mem mem' in
+  sum = card + card'
+
+let rec tmatch err tctx subst typ = function
+  | PVar var -> (Env.extend Env.empty var @< monotyp typ, typvar_map tctx, subst)
+  | WildCard -> (Env.empty, typvar_map tctx, subst)
+  | PConst c -> begin
+      match tmatch_const tctx subst typ c with
+        None -> err
+          @< Printf.sprintf "type %s doesn't match with type %s"
+          (pps_typ typ) (pps_typ @< snd @< Type.const_of tctx c)
+      | Some (tctx, subst) -> (Env.empty, typvar_map tctx, subst)
+    end
   | As (pat, var) -> begin
-      let tenv, subst, typ = tmatch err tenv subst pat in
-      if Env.mem tenv var then
-        err @< Printf.sprintf "variable %s is bound several times in a pattern" var
-      else (Env.extend tenv var @< monotyp typ, subst, typ)
+      let tenv, tvmap, subst = tmatch err tctx subst typ pat in
+      match Env.lookup tenv var with
+        None   -> (Env.extend tenv var @< monotyp typ, tvmap, subst)
+      | Some _ -> err @< Printf.sprintf "variable %s is bound several times" var
     end
   | PCons (epat, lpat) -> begin
-      let tenv, subst, etyp = tmatch err tenv subst epat in
-      let tenv, subst, ltyp = tmatch err tenv subst lpat in
-      match unify subst ltyp @< ListT etyp with
-        Some subst -> (subst_tenv subst tenv, subst, subst_typ subst ltyp)
-      | None       -> err @< Printf.sprintf "cons patterns match with only values of list type, not %s"
-                               @< Printtyp.pps_typ @< subst_typ subst ltyp
+      let ltyp, etyp = list_with_new_typvar () in
+      match unify subst ltyp typ with
+      | Some subst -> begin
+          let etenv, tvmap, subst = tmatch err tctx subst etyp epat in
+          let ltenv, tvmap, subst = tmatch err (update_typvar_map tctx tvmap) subst ltyp lpat in
+          if is_disjoint_env etenv ltenv then (subst_tenv subst @< Env.extend_by_env etenv ltenv, tvmap, subst)
+          else err "variable %s is bound several times"
+        end
+      | None -> err "cons pattern can match only with list type"
     end
   | POr (lpat, rpat) -> begin
-      let msg = "both sieds of or-pattern must have same bindings exactly" in
-      let ltenv, subst, ltyp = tmatch err tenv subst lpat in
-      let rtenv, subst, rtyp = tmatch err tenv subst rpat in
-      let subst = unify subst ltyp rtyp in
-      let lmem, rmem = mem_env ltenv, mem_env rtenv in
-      if VarSet.cardinal lmem <> VarSet.cardinal rmem then err msg
-      else
-        let subst = OptionMonad.fold_left
-          (fun acc var -> match Env.lookup ltenv var, Env.lookup rtenv var with
-             Some ltyp, Some rtyp -> unify acc (typ ltyp) (typ rtyp)
-           | _, _                 -> None)
-          subst @< VarSet.elements lmem
-        in
-        match subst with
-          Some subst -> (subst_tenv subst ltenv, subst, subst_typ subst ltyp)
-        | None -> err msg
+      let ltenv, tvmap, subst = tmatch err tctx subst typ lpat in
+      let rtenv, tvmap, subst = tmatch err (update_typvar_map tctx tvmap) subst typ rpat in
+      match unify_monotyp_env subst ltenv rtenv with
+      | Some subst -> (subst_tenv subst rtenv, tvmap, subst)
+      | None -> err "both sieds of or-pattern must have same bindings exactly"
     end

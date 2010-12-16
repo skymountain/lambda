@@ -11,7 +11,7 @@ let err s = raise (Eval_error (Printf.sprintf "Runtime error: %s" s))
 let eval_const = function
     CInt i      -> IntV i
   | CBool b     -> BoolV b
-  | CNullList   -> ListV []
+  | CNullList _ -> ListV []
     
 (* evaluation for binary operator *)
 let eval_binop = function
@@ -74,7 +74,8 @@ let rec eval_exp env = function
         Some (env, exp) -> eval_exp env exp
       | None            -> err "match failure"
     end
-      
+  | Construct _ -> assert false
+
 (* evaluation for recursive def *)
 and eval_rec env var exp =
   match exp with
@@ -96,4 +97,3 @@ let eval env =
     Exp exp -> return env "it" @< eval_exp env exp
   | Decl (var, exp) -> return env var @< eval_exp env exp
   | DeclRec (var, _, exp) -> return env var @< eval_rec env var exp
-  | EOF -> assert false
