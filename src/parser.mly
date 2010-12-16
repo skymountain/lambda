@@ -1,5 +1,7 @@
 %{
   open Syntax
+
+  let fresh_typvar () = AnyT (Types.newtypvar ())
 %}
 
 %token BACKSLA DOT SEMICOLON2
@@ -54,18 +56,18 @@ Eval:
   Expr                                 { Exp $1 }
 | LET Ident EQ Expr                    { Decl ($2, $4) }
 | LET REC Ident COLON TypeExpr EQ Expr { DeclRec ($3, $5, $7) }
-| LET REC Ident EQ Expr SEMICOLON2     { DeclRec ($3, Syntax.fresh_typvar (), $5) }
+| LET REC Ident EQ Expr SEMICOLON2     { DeclRec ($3, fresh_typvar (), $5) }
 
 Expr:
   SExpr { $1 }
 | AppExpr SExpr { App ($1, $2) }
       
 | BACKSLA Ident COLON TypeExpr DOT Expr        { Fun ($2, $4, $6) }
-| BACKSLA Ident DOT Expr                       { Fun ($2, Syntax.fresh_typvar (), $4) }
+| BACKSLA Ident DOT Expr                       { Fun ($2, fresh_typvar (), $4) }
 
 | LET Ident EQ Expr IN Expr                    { Let ($2, $4, $6) }
 | LET REC Ident COLON TypeExpr EQ Expr IN Expr { LetRec ($3, $5, $7, $9) }
-| LET REC Ident EQ Expr IN Expr                { LetRec ($3, Syntax.fresh_typvar (), $5, $7) }
+| LET REC Ident EQ Expr IN Expr                { LetRec ($3, fresh_typvar (), $5, $7) }
 | IF Expr THEN Expr ELSE Expr                  { IfExp ($2, $4, $6) }
 | MATCH Expr WITH MatchExpr                    { MatchExp ($2, $4) }
       
@@ -95,14 +97,14 @@ ConstExpr:
   INTLIT            { CInt $1 }
 | TRUE              { CBool true }
 | FALSE             { CBool false }
-| LSQPAREN RSQPAREN { CNullList (Syntax.fresh_typvar ()) }
+| LSQPAREN RSQPAREN { CNullList (fresh_typvar ()) }
 
 ListExpr:
   LSQPAREN SeqExpr RSQPAREN { $2 }
 
 SeqExpr:
   Expr SEMICOLON SeqExpr { BinOp (Cons, $1, $3) }
-| Expr  { BinOp (Cons, $1, Const (CNullList (Syntax.fresh_typvar ()))) }
+| Expr  { BinOp (Cons, $1, Const (CNullList (fresh_typvar ()))) }
   
 MatchExpr:
   MatchExpr_ VBAR MatchExpr   { $1::$3 }
@@ -122,7 +124,7 @@ PatternExpr:
 | LPAREN PatternExpr RPAREN      { $2 }
       
 PListExpr:
-  PListExpr_ { PCons ($1, PConst (CNullList (Syntax.fresh_typvar ()))  ) }
+  PListExpr_ { PCons ($1, PConst (CNullList (fresh_typvar ()))  ) }
 | PListExpr_ SEMICOLON PListExpr { PCons ($1, $3) }
 
 PListExpr_:

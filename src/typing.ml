@@ -26,16 +26,6 @@ let unifyl_with_tctx subst tctx typs msg =
 
 let return typ (tctx, subst) = (tctx, subst, Subst.subst_typ subst typ)
 
-(* (\* typing for constant *\) *)
-(* let typ_const tctx = function *)
-(*     CInt _ -> (typvar_map tctx, PredefType.int_typ) *)
-(*   | CBool _ -> (typvar_map tctx, PredefType.bool_typ) *)
-(*   | CNullList typ -> begin *)
-(*       match typ with *)
-(*         NameT _ -> map_typ tctx typ *)
-(*       | _       -> err "specified type isn't list type" *)
-(*     end *)
-
 (* typing for binary operator *)
 let typ_binop tctx subst typ1 typ2 = function
     (Plus | Minus | Mult | Div | Lt ) -> assert false
@@ -114,21 +104,6 @@ let rec typ_exp tctx subst = function
       let tctx, subst, typ = typ_exp tctx subst body in
       (remove_var tctx var, subst, typ)
     end
-
-  (* | ListLit exps -> begin *)
-  (*     let tctx, subst, typs = List.fold_right *)
-  (*       (fun exp (tctx, subst, typs) -> *)
-  (*          let tctx, subst, typ = typ_exp tctx subst exp in *)
-  (*          (tctx, subst, typ::typs)) *)
-  (*       exps (tctx, subst, []) *)
-  (*     in *)
-  (*     let ltyp, etyp = list_with_new_typvar () in *)
-  (*     let tctx, subst = *)
-  (*       unifyl_with_tctx subst tctx (List.fold_right (fun typ eqs -> (etyp, typ)::eqs) typs []) *)
-  (*         @< "element types of list must be same" *)
-  (*     in *)
-  (*     (tctx, subst, Subst.subst_typ subst ltyp) *)
-  (*   end *)
 
   | TypedExpr (exp, typ) -> begin
       let tvmap, typ = map_typ tctx typ in

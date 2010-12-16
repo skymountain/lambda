@@ -66,5 +66,3 @@ type program =
   | Eval of eval
   | TypDef of typdef
   | EOF
-
-let fresh_typvar () = AnyT (Types.newtypvar ())
