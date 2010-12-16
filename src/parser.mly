@@ -64,6 +64,7 @@ Expr:
       
 | BACKSLA Ident COLON TypeExpr DOT Expr        { Fun ($2, $4, $6) }
 | BACKSLA Ident DOT Expr                       { Fun ($2, fresh_typvar (), $4) }
+
 | LET Ident EQ Expr IN Expr                    { Let ($2, $4, $6) }
 | LET REC Ident COLON TypeExpr EQ Expr IN Expr { LetRec ($3, $5, $7, $9) }
 | LET REC Ident EQ Expr IN Expr                { LetRec ($3, fresh_typvar (), $5, $7) }
@@ -96,8 +97,7 @@ ConstExpr:
   INTLIT            { CInt $1 }
 | TRUE              { CBool true }
 | FALSE             { CBool false }
-| LPAREN LSQPAREN RSQPAREN COLON TypeExpr RPAREN
-                    { CNullList $5 }
+| LSQPAREN RSQPAREN { CNullList (fresh_typvar ()) }
 
 ListExpr:
   LSQPAREN SeqExpr RSQPAREN { $2 }
@@ -105,7 +105,7 @@ ListExpr:
 SeqExpr:
   Expr SEMICOLON SeqExpr    { BinOp (BCons, $1, $3) }
 | Expr                      { BinOp (BCons, $1, Const (CNullList (fresh_typvar ()))) }
-  
+
 MatchExpr:
   MatchExpr_ VBAR MatchExpr   { $1::$3 }
 | MatchExpr_ %prec below_VBAR { [$1] }
