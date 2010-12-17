@@ -7,18 +7,18 @@ exception Typing_error of string
 let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
   
 let rec map_typ tctx = function
-  | Syntax.FunT (arg, ret)    -> begin
+  | Syntax.TFun (arg, ret)    -> begin
       let (tvmap, arg) = map_typ tctx arg in
       let (tvmap, ret) = map_typ (update_typvar_map tctx tvmap) ret in
       (tvmap, TyFun (arg, ret))
     end
-  | Syntax.VarT typvar        -> begin
+  | Syntax.TVar typvar        -> begin
       let tctx = add_typvar tctx typvar in
       match lookup_typvar tctx typvar with
         None -> assert false
       | Some id -> (typvar_map tctx, TyVar id)
     end
-  | Syntax.NameT (typs, name) -> begin
+  | Syntax.TName (typs, name) -> begin
       match TypeContext.lookup_typ tctx name with
       | None -> err @< Printf.sprintf "%s is used as constructor name, which wasn't defined" name
       | Some (_, typdef) when typdef.td_arity <> List.length typs ->

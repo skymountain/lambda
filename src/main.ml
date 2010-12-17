@@ -70,19 +70,19 @@ let (env, tctx) =
     [
       ("i", IntV 1, PredefType.int_typ); ("ii", IntV 2, PredefType.int_typ);
 
-      ("+", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Plus, Var "x", Var "y")), ref Env.empty),
+      ("+", FunV ("x", Fun ("y", TName ([], "int"), BinOp (BPlus, Var "x", Var "y")), ref Env.empty),
        TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
 
-      ("-", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Minus, Var "x", Var "y")), ref Env.empty),
+      ("-", FunV ("x", Fun ("y", TName ([], "int"), BinOp (BMinus, Var "x", Var "y")), ref Env.empty),
        TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
 
-      ("*", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Mult, Var "x", Var "y")), ref Env.empty),
+      ("*", FunV ("x", Fun ("y", TName ([], "int"), BinOp (BMult, Var "x", Var "y")), ref Env.empty),
        TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
 
-      ("/", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Div, Var "x", Var "y")), ref Env.empty),
+      ("/", FunV ("x", Fun ("y", TName ([], "int"), BinOp (BDiv, Var "x", Var "y")), ref Env.empty),
        TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.int_typ)));
 
-      ("<", FunV ("x", Fun ("y", NameT ([], "int"), BinOp (Lt, Var "x", Var "y")), ref Env.empty),
+      ("<", FunV ("x", Fun ("y", TName ([], "int"), BinOp (BLt, Var "x", Var "y")), ref Env.empty),
        TyFun (PredefType.int_typ, TyFun(PredefType.int_typ, PredefType.bool_typ)));
     ]
 

@@ -1,25 +1,25 @@
 type id = string
 
 type binop =
-    Plus
-  | Minus
-  | Mult
-  | Div
-  | Lt
-  | Cons
+    BPlus
+  | BMinus
+  | BMult
+  | BDiv
+  | BLt
+  | BCons
       
 let str_of_binop = function
-    Plus  -> "+"
-  | Minus -> "-"
-  | Mult  -> "*"
-  | Div   -> "/"
-  | Lt    -> "<"
-  | Cons  -> "::"
+    BPlus  -> "+"
+  | BMinus -> "-"
+  | BMult  -> "*"
+  | BDiv   -> "/"
+  | BLt    -> "<"
+  | BCons  -> "::"
       
 type typ =
-  | FunT  of typ * typ
-  | VarT  of id
-  | NameT of typ list * id
+  | TFun  of typ * typ
+  | TVar  of id
+  | TName of typ list * id
 
 type const =
     CInt      of int
@@ -29,9 +29,9 @@ type const =
 (* pattern *)      
 type pat =
     PVar   of id
-  | WildCard
+  | PWildCard
   | PConst of const
-  | As     of pat * id
+  | PAs    of pat * id
   | PList  of pat list
   | PCons  of pat * pat
   | POr    of pat * pat

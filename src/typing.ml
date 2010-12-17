@@ -14,17 +14,17 @@ let typ_const tctx = function
   | CBool _ -> (typvar_map tctx, PredefType.bool_typ)
   | CNullList typ -> begin
       match typ with
-        NameT _ -> map_typ tctx typ
+        TName _ -> map_typ tctx typ
       | _       -> err "specified type isn't list type"
     end
 
 (* typing for binary operator *)
 let typ_binop typ1 typ2 = function
-    (Plus | Minus | Mult | Div| Lt ) -> assert false
-  | Cons -> begin
+    (BPlus | BMinus | BMult | BDiv | BLt ) -> assert false
+  | BCons -> begin
       let ltyp = TypeDef.inst PredefType.list_typdef [typ1] in
       if eq_typ ltyp typ2 then typ2
-      else err @< Printf.sprintf "element types of %s must be same types" @< str_of_binop Cons
+      else err @< Printf.sprintf "element types of %s must be same types" @< str_of_binop BCons
     end
 
 (* typing for exp *)

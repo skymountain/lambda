@@ -23,9 +23,9 @@ let list_contents = function ListV vs -> Some vs | _ -> None
 
 let rec ematch v = function
     PVar var -> Some (Env.extend Env.empty var v)
-  | WildCard -> Some Env.empty
+  | PWildCard -> Some Env.empty
   | PConst c -> if ematch_const v c then Some Env.empty else None
-  | As (pat, var) -> 
+  | PAs (pat, var) -> 
       ematch v pat >>= (fun env -> Some (Env.extend env var v))
   (* lefter pattern has higher precedence respect with environment *)
   | PList pats -> begin
@@ -83,11 +83,11 @@ let typ_of_const tctx = function
 
 let rec tmatch tctx typ = function
     PVar var -> Env.extend Env.empty var typ
-  | WildCard -> Env.empty
+  | PWildCard -> Env.empty
   | PConst c ->
       if tmatch_const tctx typ c then Env.empty
       else err @< Printf.sprintf "type %s doesn't match with type %s" (pps_typ typ) (pps_typ @< typ_of_const tctx c)
-  | As (pat, var) -> begin
+  | PAs (pat, var) -> begin
       let tenv = tmatch tctx typ pat in
       match Env.lookup tenv var with
         None   -> Env.extend tenv var typ

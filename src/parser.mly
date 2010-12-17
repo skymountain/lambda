@@ -72,7 +72,7 @@ Expr:
 | Expr INFIXOP3 Expr { App (App (Var $2, $1), $3) }
 | Expr INFIXOP4 Expr { App (App (Var $2, $1), $3) }
 | Expr EQ       Expr { App (App (Var "=", $1), $3) }
-| Expr COLON2 Expr   { BinOp (Cons,  $1, $3) }
+| Expr COLON2 Expr   { BinOp (BCons,  $1, $3) }
 
 SExpr:
   PREFIXOP SExpr     { App (Var $1, $2) }
@@ -111,10 +111,10 @@ MatchExpr_:
   PatternExpr RARROW Expr  { ($1, $3) }
       
 PatternExpr:
-  UNDERBAR                       { WildCard }
+  UNDERBAR                       { PWildCard }
 | Ident                          { PVar $1 }
 | ConstExpr                      { PConst $1 }
-| PatternExpr AS Ident           { As ($1, $3) }
+| PatternExpr AS Ident           { PAs ($1, $3) }
 | LSQPAREN PListExpr RSQPAREN    { PList $2 }
 | PatternExpr COLON2 PatternExpr { PCons ($1, $3) }
 | PatternExpr VBAR PatternExpr   { POr ($1, $3) }
@@ -170,14 +170,14 @@ VariantDefinition:
 
 
 TypeExpr:
-  TypeExpr RARROW TypeExpr            { FunT ($1, $3) }
+  TypeExpr RARROW TypeExpr            { TFun ($1, $3) }
 | TypeExpr_                           { $1 }
 TypeExpr_:
-  LIDENT                              { NameT ([], $1) }
-| TypeExpr_ LIDENT                    { NameT ([$1], $2) }
-| LPAREN MultiTypeExprs RPAREN LIDENT { NameT ($2, $4) }
+  LIDENT                              { TName ([], $1) }
+| TypeExpr_ LIDENT                    { TName ([$1], $2) }
+| LPAREN MultiTypeExprs RPAREN LIDENT { TName ($2, $4) }
 | LPAREN TypeExpr RPAREN              { $2 }
-| TypeParameter                       { VarT $1 }
+| TypeParameter                       { TVar $1 }
 
 MultiTypeExprs:
 | TypeExpr COMMA TypeExpr             { [$1; $3] }

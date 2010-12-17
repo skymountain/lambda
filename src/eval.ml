@@ -14,19 +14,19 @@ let eval_const = function
   | CNullList _ -> ListV []
     
 (* evaluation for binary operator *)
-let eval_binop = function
+let eval_binop (op, v1, v2) = match (op, v1, v2) with
   (* airthmetic expression *)
-    Plus, IntV vl, IntV vr             -> IntV (vl + vr)
-  | Minus, IntV vl, IntV vr            -> IntV (vl - vr)
-  | Mult, IntV vl, IntV vr             -> IntV (vl * vr)
-  | Div, IntV vl, IntV vr when vr <> 0 -> IntV (vl / vr)
-  | Div, IntV _, IntV _                -> err "division by zero isn't allowed"
-  | Lt, IntV vl, IntV vr               -> BoolV (vl < vr)
-  | (Plus as op, _, _) | (Minus as op, _, _) | (Mult as op, _, _) | (Div as op, _, _) | (Lt as op, _, _) ->
+    BPlus  , IntV vl, IntV vr              -> IntV (vl + vr)
+  | BMinus , IntV vl, IntV vr              -> IntV (vl - vr)
+  | BMult  , IntV vl, IntV vr              -> IntV (vl * vr)
+  | BDiv   , IntV vl, IntV vr when vr <> 0 -> IntV (vl / vr)
+  | BDiv   , IntV _ , IntV _               -> err "division by zero isn't allowed"
+  | BLt    , IntV vl, IntV vr              -> BoolV (vl < vr)
+  | (BPlus,_,_) | (BMinus,_,_) | (BMult,_,_) | (BDiv,_,_) | (BLt,_,_) ->
       err @< Printf.sprintf "both arguments of %s must be integer" @< str_of_binop op
   (* cons *)
-  | Cons, v, ListV vs      -> ListV (v::vs)
-  | Cons, _, _             -> err "right-side of %s must be list type" @< str_of_binop Cons
+  | BCons, v, ListV vs      -> ListV (v::vs)
+  | BCons, _, _             -> err "right-side of %s must be list type" @< str_of_binop op
       
 (* evaluation for exp *)
 let rec eval_exp env = function
