@@ -3,6 +3,9 @@ open Types
 open TypeDef
 open TypeContext
 
+exception Typing_error of string
+let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
+  
 let rec map_typ tctx = function
   | Syntax.FunT (arg, ret)    -> begin
       let (tvmap, arg) = map_typ tctx arg in

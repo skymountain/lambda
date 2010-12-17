@@ -36,7 +36,7 @@ let rec read_eval_print prompt fun_lexbuf tctx env err =
        Parsing.Parse_error   -> f "Syntax error" 
      | Lexer.Lexical_error s -> f s
      | Eval.Eval_error s     -> f s
-     | Typing.Typing_error s -> f s
+     | Type.Typing_error s -> f s
      | _ -> raise e)
 
 let refill_buffer ch =

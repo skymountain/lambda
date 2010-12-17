@@ -8,9 +8,6 @@ open TypeContext
 open TypeDef
 open Printtype
 
-exception Typing_error of string
-let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
-  
 (* typing for constant *)
 let typ_const tctx = function
     CInt _ -> (typvar_map tctx, PredefType.int_typ)
