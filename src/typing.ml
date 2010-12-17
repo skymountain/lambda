@@ -1,5 +1,7 @@
 open Misc
 open Syntax
+open OptionMonad
+open Common
 open Types
 open Type
 open TypeContext
@@ -126,7 +128,40 @@ let rec typ_exp tctx = function
       in
       iter tctx typ branches
     end
-  | Construct _ -> assert false
+  | Construct (constr_name, typ) -> begin
+      let rec local_unify acc typ1 typ2 = match typ1, typ2 with
+        | TyFun (atyp1, rtyp1), TyFun (atyp2, rtyp2) -> begin
+            match local_unify acc atyp1 atyp2 with
+              Some acc -> local_unify acc rtyp1 rtyp2
+            | None     -> None
+          end
+        | TyVar id, _ -> begin
+            if TypVarMap.mem id acc then
+              if eq_typ typ2 @< TypVarMap.find id acc then Some acc
+              else None
+            else Some (TypVarMap.add id typ2 acc)
+          end
+        | TyVariant (typs1, ident1), TyVariant (typs2, ident2) -> begin
+            if not (Ident.equal ident1 ident2) then None
+            else
+              OptionMonad.fold_left
+                (fun acc (typ1, typ2) -> local_unify acc typ1 typ2)
+                (Some acc) (List.combine typs1 typs2)
+          end
+        | TyAlias (atyp, _, _), typ | typ, TyAlias (atyp, _, _) ->
+            local_unify acc atyp typ
+        | (TyFun _|TyVariant _), _ -> None
+      in
+      let tvmap, typ = map_typ tctx typ in
+      match lookup_constr tctx constr_name with
+      | Some ({ td_kind = TkVariant constrs }) -> begin
+              let constr_typ = List.assoc constr_name constrs in
+              match local_unify TypVarMap.empty constr_typ typ with
+              | Some _ -> (tvmap, typ)
+              | None   -> err "type of variant constructor is invalid"
+        end
+      | _ -> err "no such variant constructor"
+    end
 
 (* typing for let-rec *)
 and typ_letrec tctx var typ exp =

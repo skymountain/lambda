@@ -82,7 +82,8 @@ SExpr:
 | LPAREN Expr RPAREN { $2 }
 | LPAREN Expr COLON TypeExpr RPAREN
                      { TypedExpr ($2, $4) }
-| UIDENT             { Construct $1 }
+| LPAREN UIDENT COLON TypeExpr RPAREN
+                     { Construct ($2, $4) }
 
 AppExpr:
   AppExpr SExpr { App ($1, $2) }

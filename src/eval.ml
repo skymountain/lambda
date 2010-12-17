@@ -48,6 +48,8 @@ let rec eval_exp env = function
       begin match eval_exp env f, eval_exp env act with
         FunV (formal, body, env'), act ->
           eval_exp (Env.extend !env' formal act) body
+      | ConstrV (cname, vs), v ->
+          ConstrV (cname, vs@[v])
       | _ -> err "not-function value is applied"
       end
     end
@@ -78,7 +80,8 @@ let rec eval_exp env = function
         Some (env, exp) -> eval_exp env exp
       | None            -> err "match failure"
     end
-  | Construct _ -> assert false
+  | Construct (cname, _) ->
+      ConstrV (cname, [])
 
 (* evaluation for recursive def *)
 and eval_rec env var exp =

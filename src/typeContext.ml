@@ -17,6 +17,8 @@ let empty = {
   constr_env = Env.empty;
 }
 
+let find_typ tctx ident = Env.lookup tctx.typdef_env ident
+
 let lookup_var tctx = Env.lookup tctx.typ_env
 let lookup_typ tctx name = Env.fold tctx.typdef_env
   (fun x (k, v) ->

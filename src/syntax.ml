@@ -46,9 +46,9 @@ type exp =
   | IfExp   of exp * exp * exp
   | LetRec  of id * typ * exp * exp
   | ListLit of exp list
-  | TypedExpr of exp * typ      
+  | TypedExpr of exp * typ
   | MatchExp of exp * (pat * exp) list
-  | Construct of string
+  | Construct of string * typ
 
 type eval =
     Exp  of exp
