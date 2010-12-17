@@ -176,9 +176,6 @@ TypeExpr_:
   LIDENT                              { NameT ([], $1) }
 | TypeExpr_ LIDENT                    { NameT ([$1], $2) }
 | LPAREN MultiTypeExprs RPAREN LIDENT { NameT ($2, $4) }
-| TypeExpr__                          { $1 }
-
-TypeExpr__:
 | LPAREN TypeExpr RPAREN              { $2 }
 | TypeParameter                       { VarT $1 }
 
