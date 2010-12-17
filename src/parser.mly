@@ -170,15 +170,22 @@ VariantDefinition:
 
 
 TypeExpr:
-  TypeExpr RARROW TypeExpr          { FunT ($1, $3) }
-| TypeExpr_                         { $1 }
+  TypeExpr RARROW TypeExpr            { FunT ($1, $3) }
+| TypeExpr_                           { $1 }
 TypeExpr_:
-  LIDENT                            { NameT ([], $1) }
-| TypeExpr_ LIDENT                  { NameT ([$1], $2) }
-| LPAREN TypeExprList RPAREN LIDENT { NameT ($2, $4) }
-| TypeParameter                     { VarT $1 }
-| LPAREN TypeExpr RPAREN            { $2 }
+  LIDENT                              { NameT ([], $1) }
+| TypeExpr_ LIDENT                    { NameT ([$1], $2) }
+| LPAREN MultiTypeExprs RPAREN LIDENT { NameT ($2, $4) }
+| TypeExpr__                          { $1 }
+
+TypeExpr__:
+| LPAREN TypeExpr RPAREN              { $2 }
+| TypeParameter                       { VarT $1 }
+
+MultiTypeExprs:
+| TypeExpr COMMA TypeExpr             { [$1; $3] }
+| TypeExpr COMMA MultiTypeExprs       { $1::$3 }
 
 TypeExprList:
-  TypeExpr                    { [$1] }
-| TypeExpr COMMA TypeExprList { $1::$3 }
+| TypeExpr                            { [$1] }
+| MultiTypeExprs                      { $1 }
