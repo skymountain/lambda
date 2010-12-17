@@ -7,6 +7,9 @@ open Types
 open Type
 open Printtype
 
+exception Matching_error of string
+let err s = raise (Matching_error (Printf.sprintf "Matching error: %s" s))
+
 module VariableSet = Set.Make(String)
 
 let ematch_const v c =
@@ -78,14 +81,14 @@ let typ_of_const tctx = function
   | CBool _     -> PredefType.bool_typ
   | CNullList t -> snd @< map_typ tctx t
 
-let rec tmatch err tctx typ = function
+let rec tmatch tctx typ = function
     PVar var -> Env.extend Env.empty var typ
   | WildCard -> Env.empty
   | PConst c ->
       if tmatch_const tctx typ c then Env.empty
       else err @< Printf.sprintf "type %s doesn't match with type %s" (pps_typ typ) (pps_typ @< typ_of_const tctx c)
   | As (pat, var) -> begin
-      let tenv = tmatch err tctx typ pat in
+      let tenv = tmatch tctx typ pat in
       match Env.lookup tenv var with
         None   -> Env.extend tenv var typ
       | Some _ -> err @< Printf.sprintf "variable %s is bound several times" var
@@ -93,7 +96,7 @@ let rec tmatch err tctx typ = function
   | PList pats -> begin
       match PredefType.etyp_of_list typ with
       | Some etyp -> begin
-          let tenvs = List.map (fun pat -> tmatch err tctx etyp pat) pats in
+          let tenvs = List.map (fun pat -> tmatch tctx etyp pat) pats in
           List.fold_left
             (fun acc tenv ->
                if is_disjoint_env acc tenv then Env.extend_by_env acc tenv
@@ -105,16 +108,16 @@ let rec tmatch err tctx typ = function
   | PCons (epat, lpat) -> begin
       match PredefType.etyp_of_list typ with
         Some etyp -> begin
-          let etenv = tmatch err tctx etyp epat in
-          let ltenv = tmatch err tctx typ lpat in
+          let etenv = tmatch tctx etyp epat in
+          let ltenv = tmatch tctx typ lpat in
           if is_disjoint_env etenv ltenv then Env.extend_by_env etenv ltenv
           else err "variable %s is bound several times"
         end
       | _ -> err "cons patterns match with only list type"
     end
   | POr (lpat, rpat) -> begin
-      let ltenv = tmatch err tctx typ lpat in
-      let rtenv = tmatch err tctx typ rpat in
+      let ltenv = tmatch tctx typ lpat in
+      let rtenv = tmatch tctx typ rpat in
       if eq_env ltenv rtenv then ltenv
       else err "both sieds of or-pattern must have same bindings exactly"
     end

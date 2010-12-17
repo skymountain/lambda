@@ -108,12 +108,12 @@ let rec typ_exp tctx = function
       let tvmap, typ = typ_exp tctx exp in
       let rec iter tctx cond_typ = function
           [(pat, body)] -> begin
-            let tenv = Patmatch.tmatch err tctx cond_typ pat in
+            let tenv = Patmatch.tmatch tctx cond_typ pat in
             let tctx = { tctx with typ_env = Env.extend_by_env tctx.typ_env tenv } in
             typ_exp tctx  body
           end
         | (pat, body)::t -> begin
-            let extended_tctx = extend_typ_env tctx @< Patmatch.tmatch err tctx cond_typ pat in
+            let extended_tctx = extend_typ_env tctx @< Patmatch.tmatch tctx cond_typ pat in
             let tvmap ,btyp = typ_exp extended_tctx body in
             let tctx = update_typvar_map tctx tvmap in
             let tvmap, btyp' = iter tctx cond_typ t in

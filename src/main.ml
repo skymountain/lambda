@@ -33,10 +33,11 @@ let rec read_eval_print prompt fun_lexbuf tctx env err =
   with
     e -> let f s = err s; read_eval_print prompt fun_lexbuf tctx env err in
     (match e with
-       Parsing.Parse_error   -> f "Syntax error" 
-     | Lexer.Lexical_error s -> f s
-     | Eval.Eval_error s     -> f s
-     | Type.Typing_error s -> f s
+       Parsing.Parse_error       -> f "Syntax error"
+     | Lexer.Lexical_error s     -> f s
+     | Eval.Eval_error s         -> f s
+     | Type.Typing_error s       -> f s
+     | Patmatch.Matching_error s -> f s
      | _ -> raise e)
 
 let refill_buffer ch =
