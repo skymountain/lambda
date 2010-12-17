@@ -19,8 +19,6 @@ let ematch_const v c =
   | ListV [], CNullList _         -> true
   | _, _                          -> false
   
-let list_contents = function ListV vs -> Some vs | _ -> None
-
 let rec ematch v = function
     PVar var -> Some (Env.extend Env.empty var v)
   | PWildCard -> Some Env.empty
