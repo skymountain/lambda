@@ -5,7 +5,7 @@ let (>>=) x f =
     Some x -> f x
   | None   -> None
 
-let (>>) x y = y
+let (>>) _ y = y
 
 let return x = Some x
 

@@ -62,7 +62,7 @@ let init_ctx binds =
                        (Env.extend acc_env var v, TypeContext.add_var acc_tctx var typ))
       binds (Env.empty, TypeContext.empty)
   in
-  let tctx = Env.fold PredefType.predef_env (fun tctx (ident, typdef) -> TypeContext.insert_typ tctx ident typdef) tctx in
+  let tctx = Env.fold PredefType.predef_env (fun tctx (ident, typdef) -> TypeContext.add_typ tctx typdef ident) tctx in
   (env, tctx)
 
 let (env, tctx) =

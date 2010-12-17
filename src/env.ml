@@ -20,7 +20,7 @@ let list_of env = env
 
 let rec pps_env = function
     [] -> "[]"
-  | (key,v)::xs -> Printf.sprintf "key:%s, %s" key @< pps_env xs
+  | (key,_)::xs -> Printf.sprintf "key:%s, %s" key @< pps_env xs
 
 let rec map env f =
   match env with

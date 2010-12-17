@@ -8,15 +8,15 @@ let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
   
 let rec map_typ tctx = function
   | Syntax.TFun (arg, ret)    -> begin
-      let (tvmap, arg) = map_typ tctx arg in
-      let (tvmap, ret) = map_typ (update_typvar_map tctx tvmap) ret in
-      (tvmap, TyFun (arg, ret))
+      let arg = map_typ tctx arg in
+      let ret = map_typ tctx ret in
+      TyFun (arg, ret)
     end
   | Syntax.TVar typvar        -> begin
-      let tctx = add_typvar tctx typvar in
-      match lookup_typvar tctx typvar with
+      TypvarMap.add typvar;
+      match TypvarMap.find typvar with
         None -> assert false
-      | Some id -> (typvar_map tctx, TyVar id)
+      | Some id -> TyVar id
     end
   | Syntax.TName (typs, name) -> begin
       match TypeContext.lookup_typ tctx name with
@@ -25,18 +25,13 @@ let rec map_typ tctx = function
           err @< Printf.sprintf "%s requires %d type parameters exactly, but %d type parameters was passed"
                    name typdef.td_arity @< List.length typs
       | Some (ident, typdef) -> begin
-          let tctx, typs = map_typs tctx typs in
+          let typs = map_typs tctx typs in
           match typdef.td_kind with
-          | TkVariant _ -> (typvar_map tctx, TyVariant (typs, ident))
-          | TkAlias typ -> (typvar_map tctx, TyAlias (replace_tyvar (List.combine typdef.td_params typs) typ, typs, ident))
+          | TkVariant _ -> TyVariant (typs, ident)
+          | TkAlias typ -> TyAlias (replace_tyvar (List.combine typdef.td_params typs) typ, typs, ident)
         end
     end
-and map_typs tctx typs =
-  List.fold_right
-    (fun typ (tctx, typs) ->
-       let tvmap, typ = map_typ tctx typ in
-       (update_typvar_map tctx tvmap, typ::typs))
-    typs (tctx, [])
+and map_typs tctx = List.map (map_typ tctx)
 
 (* equality function *)
 let rec eq_typ typ1 typ2 =

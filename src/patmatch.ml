@@ -56,7 +56,7 @@ let rec tmatch_const tctx typ = function
     CInt _         -> eq_typ typ PredefType.int_typ
   | CBool _        -> eq_typ typ PredefType.bool_typ
   | CNullList ltyp -> begin
-      let _, ltyp = map_typ tctx ltyp in
+      let ltyp = map_typ tctx ltyp in
       eq_typ ltyp typ
     end
 
@@ -79,7 +79,7 @@ let eq_env env env' =
 let typ_of_const tctx = function
     CInt _      -> PredefType.int_typ
   | CBool _     -> PredefType.bool_typ
-  | CNullList t -> snd @< map_typ tctx t
+  | CNullList t -> map_typ tctx t
 
 let rec tmatch tctx typ = function
     PVar var -> Env.extend Env.empty var typ
