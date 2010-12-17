@@ -20,10 +20,10 @@ let rec map_typ tctx = function
     end
   | Syntax.NameT (typs, name) -> begin
       match TypeContext.lookup_typ tctx name with
-      | None ->
-          assert false (* XXX *)
+      | None -> err @< Printf.sprintf "%s is used as constructor name, which wasn't defined" name
       | Some (_, typdef) when typdef.td_arity <> List.length typs ->
-          assert false (* XXX *)
+          err @< Printf.sprintf "%s requires %d type parameters exactly, but %d type parameters was passed"
+                   name typdef.td_arity @< List.length typs
       | Some (ident, typdef) -> begin
           let tctx, typs = map_typs tctx typs in
           match typdef.td_kind with

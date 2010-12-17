@@ -12,7 +12,6 @@ and typ_kind =
   | TkAlias of typ
 
 let inst typdef typs =
-    (* XXX *)
     if List.length typs <> typdef.td_arity then assert false
     else match typdef.td_kind with
       TkVariant _ -> TyVariant (typs, typdef.td_id)
