@@ -215,8 +215,9 @@ let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Synt
         else TkAlias typ
       end
     | Syntax.TkVariant ((_::_) as constrs) -> begin
-        (* XXX: recursive definition *)
-        let variant_typ = TyVariant (List.map (fun x -> TyVar x) @< newtypvar_list arity, ident) in
+        let imaginary_typdef = { td_params = tvlist; td_arity = arity; td_kind = TkVariant []; td_id = ident } in
+        let tctx = insert_typ tctx ident imaginary_typdef in
+        let variant_typ = TyVariant (List.map (fun tv -> TyVar tv) tvlist, ident) in
         let _, constrs, tctx =
           List.fold_left (fun (set, constrs, tctx) (constr_name, typs) ->
                             if ConstrSet.mem constr_name set then err "you must specify different variant constructors"
@@ -234,6 +235,6 @@ let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Synt
       end
     | Syntax.TkVariant [] -> assert false
   in
-  let typdef = { TypeDef.td_params = tvlist; td_arity = arity; td_kind = td_kind; td_id = ident } in
+  let typdef = { td_params = tvlist; td_arity = arity; td_kind = td_kind; td_id = ident } in
   let tctx = refresh_typvar_map tctx in
   TypeContext.insert_typ tctx ident typdef
