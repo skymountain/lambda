@@ -28,13 +28,14 @@ type const =
 
 (* pattern *)
 type pat =
-  | PVar   of id
+  | PVar    of id
   | PWildCard
-  | PConst of const
-  | PAs    of pat * id
-  | PList  of pat list
-  | PCons  of pat * pat
-  | POr    of pat * pat
+  | PConst  of const
+  | PAs     of pat * id
+  | PList   of pat list
+  | PCons   of pat * pat
+  | POr     of pat * pat
+  | PConstr of string * typ * pat list
 
 type exp =
   | Var     of id

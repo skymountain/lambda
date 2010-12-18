@@ -29,6 +29,7 @@ type pat =
   | PList  of pat list
   | PCons  of pat * pat
   | POr    of pat * pat
+  | PConstr of string * typ * pat list
 
 type exp =
     Var     of id

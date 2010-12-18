@@ -7,4 +7,4 @@ val map_typs      : TypeContext.t -> Syntax.typ list -> Type.typ list
 val eq_typ        : Type.typ -> Type.typ -> bool
 val variant       : Type.typ -> (Type.typ list * Ident.t) option
 val variant_constr: TypeContext.t -> string -> (Type.typdef * Type.typ list) option
-val local_unify   : Type.typ -> Type.typ -> Type.typ Type.TypvarMap.t option
+val local_unify   : ?init:Type.typ Type.TypvarMap.t -> Type.typ -> Type.typ -> Type.typ Type.TypvarMap.t option

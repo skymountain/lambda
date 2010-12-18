@@ -94,4 +94,4 @@ let rec local_unify acc typ1 typ2 = match typ1, typ2 with
       local_unify acc atyp typ
   | (TyFun _|TyVariant _), _ -> None
 
-let local_unify typ1 typ2 = local_unify TypvarMap.empty typ1 typ2
+let local_unify ?(init = TypvarMap.empty) typ1 typ2 = local_unify init typ1 typ2

@@ -118,15 +118,20 @@ PatternExpr:
 | LSQPAREN PListExpr RSQPAREN    { PList $2 }
 | PatternExpr COLON2 PatternExpr { PCons ($1, $3) }
 | PatternExpr VBAR PatternExpr   { POr ($1, $3) }
+| UIDENT COLON TypeExpr          { PConstr ($1, $3, []) }
+| UIDENT COLON TypeExpr LPAREN PatternExprList RPAREN
+                                 { PConstr ($1, $3, $5) }
 | LPAREN PatternExpr RPAREN      { $2 }
-      
+
 PListExpr:
   PListExpr_ { [$1] }
 | PListExpr_ SEMICOLON PListExpr { $1::$3 }
-      
 PListExpr_:
   PatternExpr { $1 }
-      
+
+PatternExprList:
+  PatternExpr                       { [$1] }
+| PatternExpr COMMA PatternExprList { $1::$3 }
 
 Ident:
   LIDENT                 { $1 }
