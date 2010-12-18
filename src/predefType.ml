@@ -22,17 +22,14 @@ let list_typdef =
   let typvar = TyVar list_etypvar in
   { td_params   = [list_etypvar]; td_arity = 1;
     td_kind     = TkVariant [
-      ("[]", TyVariant ([typvar], list_ident));
-      ("::", TyFun (typvar, TyFun (TyVariant ([typvar], list_ident), TyVariant ([typvar], list_ident))));
+      ("[]", []);
+      ("::", [typvar; TyVariant ([typvar], list_ident)])
     ];
     td_id       = list_ident; }
 let inst_list_typ etyp = replace_tyvar [(list_etypvar, etyp)] (TyVariant ([TyVar list_etypvar], list_ident))
-
-let rec etyp_of_list = function
-    TyFun _ | TyVar _   -> None
-  | TyAlias (typ, _, _) -> etyp_of_list typ
-  | TyVariant (typ::[], ident) when Ident.equal ident list_ident -> Some typ
-  | TyVariant (_, ident) when Ident.equal ident list_ident -> assert false
-  | TyVariant _ -> None
+let etyp_of_list typ = match variant typ with
+    Some (typ::[], _) -> Some typ
+  | Some _            -> assert false
+  | None              -> None
 
 let predef_env = Env.extendl Env.empty [(int_ident, int_typdef); (bool_ident, bool_typdef); (list_ident, list_typdef)]

@@ -13,7 +13,7 @@ type typdef = {
   td_id     : Ident.t;
 }
 and typ_kind =
-  | TkVariant of (string * typ) list
+  | TkVariant of (string * typ list) list
   | TkAlias of typ
 
 module TypvarSet : Set.S with type elt = typvar

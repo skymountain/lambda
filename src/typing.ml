@@ -139,13 +139,21 @@ let rec typ_exp tctx = function
             local_unify acc atyp typ
         | (TyFun _|TyVariant _), _ -> None
       in
+      let rec funtyp_of =
+        function
+          [] -> assert false
+        | typ::[] -> typ
+        | typ::typs -> TyFun (typ, (funtyp_of typs))
+      in
       let typ = map_typ tctx typ in
-      match lookup_constr tctx constr_name with
-      | Some ({ td_kind = TkVariant constrs }) -> begin
-              let constr_typ = List.assoc constr_name constrs in
-              match local_unify TypvarMap.empty constr_typ typ with
-              | Some _ -> typ
-              | None   -> err "type of variant constructor is invalid"
+      match variant_constr tctx constr_name with
+      | Some (typdef, constr_typs) -> begin
+          let constr_typ = funtyp_of @<
+            constr_typs @ [TyVariant (List.map (fun x -> TyVar x) typdef.td_params, typdef.td_id)]
+          in
+          match local_unify TypvarMap.empty constr_typ typ with
+          | Some _ -> typ
+          | None   -> err "type of variant constructor is invalid"
         end
       | _ -> err "no such variant constructor"
     end
@@ -175,12 +183,6 @@ let typing tctx =
 
 
 module ConstrSet = Set.Make(String)
-let rec funtyp_of =
-  MonotypevarMap.refresh ();
-  function
-    [] -> assert false
-  | typ::[] -> typ
-  | typ::typs -> TyFun (typ, (funtyp_of typs))
 
 let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Syntax.td_kind = kind } =
   MonotypevarMap.refresh ();
@@ -205,7 +207,6 @@ let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Synt
     | Syntax.TkVariant ((_::_) as constrs) -> begin
         let imaginary_typdef = { td_params = tvlist; td_arity = arity; td_kind = TkVariant []; td_id = ident } in
         let tctx = add_typ tctx ident imaginary_typdef in
-        let variant_typ = TyVariant (List.map (fun tv -> TyVar tv) tvlist, ident) in
         let _, constrs =
           List.fold_left (fun (set, constrs) (constr_name, typs) ->
                             if ConstrSet.mem constr_name set then err "you must specify different variant constructors"
@@ -216,7 +217,6 @@ let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Synt
                               (set, constrs))
             (ConstrSet.empty, []) constrs
         in
-        let constrs = List.map (fun (constr_name, typs) -> (constr_name, funtyp_of (typs @ [variant_typ]))) constrs in
         TkVariant constrs
       end
     | Syntax.TkVariant [] -> assert false

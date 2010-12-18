@@ -53,3 +53,17 @@ let rec eq_typ typ1 typ2 =
     end
   | (TyAlias (atyp, _, _), typ) | (typ, TyAlias (atyp, _, _)) -> eq_typ atyp typ
   | (TyFun _|TyVar _|TyVariant _), _ -> false
+
+let rec variant = function
+  | TyFun _ | TyVar _       -> None
+  | TyAlias (typ, _, _)     -> variant typ
+  | TyVariant (typs, ident) -> Some (typs, ident)
+
+let variant_constr tctx constr_name =
+  match lookup_constr tctx constr_name with
+  | None -> None
+  | Some ({ td_kind = TkVariant constrs } as typdef) -> begin
+      let constr_typ = List.assoc constr_name constrs in
+      Some (typdef, constr_typ)
+    end
+  | Some _ -> assert false
