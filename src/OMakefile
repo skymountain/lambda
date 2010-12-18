@@ -29,17 +29,16 @@ OCamlGeneratedFiles(parser.ml lexer.ml)
 
 FILES[] =
 	misc
+	common
 	optionMonad
 	env
 	ident
 	syntax
-	types
-	common
-	typeDef
-	typvarMap
-	typeContext
-	predefType
 	type
+	monotypevarMap
+	typeContext
+	typeExp
+	predefType
 	printtype
 	value
 	parser
@@ -57,4 +56,4 @@ PROGRAM = lambda
 .DEFAULT: $(OCamlProgram $(PROGRAM), $(FILES))
 
 clean:
-	rm *.o *.cmi *.cmx *.annot *.spot *.spit *.omc lambda lambda.opt
+	rm -f *.o *.cmi *.cmx *.annot *.spot *.spit *.omc lambda lambda.opt

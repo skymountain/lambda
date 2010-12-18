@@ -1,5 +1,5 @@
 open Misc
-open Types
+open Type
 open Common
 
 let new_typvar typvar =
@@ -27,11 +27,6 @@ let new_typvar typvar =
   iter (String.copy typvar) (len - 1)
 
 (* pretty printer for types *)
-module TypVarMap = Map.Make(struct
-                              type t = typvar
-                              let compare = compare
-                            end)
-
 let pps =
   let is_funtyp_without_paren s =
     let len = String.length s in
@@ -46,8 +41,8 @@ let pps =
     iter 0 0
   in
   let pps_typvar typvar_map typvar id =
-    try (typvar_map, typvar, TypVarMap.find id typvar_map) with
-      Not_found -> (TypVarMap.add id typvar typvar_map, new_typvar typvar, typvar)
+    try (typvar_map, typvar, TypvarMap.find id typvar_map) with
+      Not_found -> (TypvarMap.add id typvar typvar_map, new_typvar typvar, typvar)
   in
   let rec pps_inner tvmap typvar is_bound = function
     | TyFun (typ1, typ2) -> begin
@@ -77,7 +72,7 @@ let pps =
     in
     (tvmap, typvar, List.rev typ_strs)
   in
-  (fun is_bound typ -> let _, _, s = pps_inner TypVarMap.empty "a" is_bound typ in s)
+  (fun is_bound typ -> let _, _, s = pps_inner TypvarMap.empty "a" is_bound typ in s)
 
 
 let pps_typ = pps (fun _ -> true)

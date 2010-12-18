@@ -2,10 +2,10 @@ open Misc
 open Syntax
 open OptionMonad
 open Common
-open Types
 open Type
 open TypeContext
 open TypeDef
+open TypeExp
 open Printtype
 
 (* typing for constant *)
@@ -22,7 +22,7 @@ let typ_const tctx = function
 let typ_binop typ1 typ2 = function
     (BPlus | BMinus | BMult | BDiv | BLt ) -> assert false
   | BCons -> begin
-      let ltyp = TypeDef.inst PredefType.list_typdef [typ1] in
+      let ltyp = PredefType.inst_list_typ typ1 in
       if eq_typ ltyp typ2 then typ2
       else err @< Printf.sprintf "element types of %s must be same types" @< str_of_binop BCons
     end
@@ -86,7 +86,7 @@ let rec typ_exp tctx = function
       let typs = List.map (typ_exp tctx) exps in
       let typ, typs = match typs with typ::typs -> (typ, typs) | _ -> assert false in (* assume exps is not empty *)
       List.iter (fun typ' -> if not (eq_typ typ typ') then err "element types of list must be same") typs;
-      TypeDef.inst PredefType.list_typdef [typ]
+      PredefType.inst_list_typ typ
     end
 
   | TypedExpr (exp, typ) -> begin
@@ -101,7 +101,7 @@ let rec typ_exp tctx = function
       let rec iter tctx cond_typ = function
           [(pat, body)] -> begin
             let tenv = Patmatch.tmatch tctx cond_typ pat in
-            let tctx = { tctx with typ_env = Env.extend_by_env tctx.typ_env tenv } in (* XXX *)
+            let tctx = extend_typ_env tctx tenv in
             typ_exp tctx  body
           end
         | (pat, body)::t -> begin
@@ -124,10 +124,10 @@ let rec typ_exp tctx = function
             | None     -> None
           end
         | TyVar id, _ -> begin
-            if TypVarMap.mem id acc then
-              if eq_typ typ2 @< TypVarMap.find id acc then Some acc
+            if TypvarMap.mem id acc then
+              if eq_typ typ2 @< TypvarMap.find id acc then Some acc
               else None
-            else Some (TypVarMap.add id typ2 acc)
+            else Some (TypvarMap.add id typ2 acc)
           end
         | TyVariant (typs1, ident1), TyVariant (typs2, ident2) -> begin
             if not (Ident.equal ident1 ident2) then None
@@ -144,7 +144,7 @@ let rec typ_exp tctx = function
       match lookup_constr tctx constr_name with
       | Some ({ td_kind = TkVariant constrs }) -> begin
               let constr_typ = List.assoc constr_name constrs in
-              match local_unify TypVarMap.empty constr_typ typ with
+              match local_unify TypvarMap.empty constr_typ typ with
               | Some _ -> typ
               | None   -> err "type of variant constructor is invalid"
         end
@@ -177,26 +177,26 @@ let typing tctx =
 
 module ConstrSet = Set.Make(String)
 let rec funtyp_of =
-  TypvarMap.refresh ();
+  MonotypevarMap.refresh ();
   function
     [] -> assert false
   | typ::[] -> typ
   | typ::typs -> TyFun (typ, (funtyp_of typs))
 
 let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Syntax.td_kind = kind } =
-  TypvarMap.refresh ();
+  MonotypevarMap.refresh ();
   let tvlist = List.map
     (fun param ->
-       if TypvarMap.mem param then
+       if MonotypevarMap.mem param then
          err "you must specify different parameters as type variables"
        else
-         TypvarMap.add param;
-         match TypvarMap.find param with Some tv -> tv | _ -> assert false)
+         MonotypevarMap.add param;
+         match MonotypevarMap.find param with Some tv -> tv | _ -> assert false)
     params
   in
   let arity = List.length params in
   let ident = Ident.create typ_name in
-  let typvar_num = TypvarMap.cardinal () in
+  let typvar_num = MonotypevarMap.cardinal () in
   let td_kind =
     match kind with
     | Syntax.TkAlias typ -> begin
@@ -222,7 +222,7 @@ let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Synt
       end
     | Syntax.TkVariant [] -> assert false
   in
-  if typvar_num <> TypvarMap.cardinal () then err "there are type variables which weren't specified as parameters"
+  if typvar_num <> MonotypevarMap.cardinal () then err "there are type variables which weren't specified as parameters"
   else
     let typdef = { td_params = tvlist; td_arity = arity; td_kind = td_kind; td_id = ident } in
     TypeContext.add_typ tctx typdef ident

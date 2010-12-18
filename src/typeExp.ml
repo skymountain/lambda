@@ -1,11 +1,18 @@
 open Misc
-open Types
+open Type
 open TypeDef
 open TypeContext
+open MonotypevarMap
 
 exception Typing_error of string
 let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
   
+let rec replace_tyvar assoc = function
+  | TyFun (atyp, rtyp)          -> TyFun (replace_tyvar assoc atyp, replace_tyvar assoc rtyp)
+  | TyVar tv                    -> List.assoc tv assoc
+  | TyVariant (typs, typdef)    -> TyVariant (List.map (replace_tyvar assoc) typs, typdef)
+  | TyAlias (typ, typs, typdef) -> TyAlias (replace_tyvar assoc typ, List.map (replace_tyvar assoc) typs, typdef)
+
 let rec map_typ tctx = function
   | Syntax.TFun (arg, ret)    -> begin
       let arg = map_typ tctx arg in
@@ -13,8 +20,8 @@ let rec map_typ tctx = function
       TyFun (arg, ret)
     end
   | Syntax.TVar typvar        -> begin
-      TypvarMap.add typvar;
-      match TypvarMap.find typvar with
+      MonotypevarMap.add typvar;
+      match MonotypevarMap.find typvar with
         None -> assert false
       | Some id -> TyVar id
     end
@@ -39,7 +46,6 @@ let rec eq_typ typ1 typ2 =
   | TyFun (arg1, ret1), TyFun (arg2, ret2) ->
       eq_typ arg1 arg2 && eq_typ ret1 ret2
   | TyVar tv1, TyVar tv2 -> tv1 = tv2
-
   | TyVariant (typs1, ident1), TyVariant (typs2, ident2) -> begin
       Ident.equal ident1 ident2 &&
         List.fold_left

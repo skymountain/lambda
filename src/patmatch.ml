@@ -3,8 +3,8 @@ open Misc
 open Common
 open Syntax
 open Value
-open Types
 open Type
+open TypeExp
 open Printtype
 
 exception Matching_error of string
