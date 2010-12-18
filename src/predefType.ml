@@ -1,3 +1,4 @@
+open Misc
 open Type
 open Typeexp
 
@@ -5,8 +6,10 @@ let inst typdef typs =
   if List.length typs <> typdef.td_arity then assert false
   else match typdef.td_kind with
     TkVariant _ -> TyVariant (typs, typdef.td_id)
-  | TkAlias typ      -> TyAlias (replace_tyvar (List.combine typdef.td_params typs) typ, typs, typdef.td_id)
-
+  | TkAlias typ      -> begin
+      let map = init_typvarmap typdef.td_params typs in
+      TyAlias (replace_tyvar map typ, typs, typdef.td_id)
+    end
 
 let int_ident   = Ident.create "int"
 let int_typdef  = { td_params = []; td_arity = 0; td_kind = TkVariant []; td_id = int_ident; }
@@ -26,7 +29,9 @@ let list_typdef =
       ("::", [typvar; TyVariant ([typvar], list_ident)])
     ];
     td_id       = list_ident; }
-let inst_list_typ etyp = replace_tyvar [(list_etypvar, etyp)] (TyVariant ([TyVar list_etypvar], list_ident))
+let inst_list_typ etyp =
+  let map = init_typvarmap [list_etypvar] [etyp] in
+  replace_tyvar map (TyVariant ([TyVar list_etypvar], list_ident))
 let etyp_of_list typ = match variant typ with
     Some (typ::[], _) -> Some typ
   | Some _            -> assert false

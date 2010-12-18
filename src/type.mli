@@ -19,5 +19,7 @@ and typ_kind =
 module TypvarSet : Set.S with type elt = typvar
 module TypvarMap : Map.S with type key = typvar
 
+val init_typvarmap : typvar list -> typ list -> typ TypvarMap.t
+
 val newtypvar      : unit -> typvar
 val newtypvar_list : int -> typvar list

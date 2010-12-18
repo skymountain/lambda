@@ -6,11 +6,11 @@ open MonotypevarMap
 exception Typing_error of string
 let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
 
-let rec replace_tyvar assoc = function
-  | TyFun (atyp, rtyp)          -> TyFun (replace_tyvar assoc atyp, replace_tyvar assoc rtyp)
-  | TyVar tv                    -> List.assoc tv assoc
-  | TyVariant (typs, typdef)    -> TyVariant (List.map (replace_tyvar assoc) typs, typdef)
-  | TyAlias (typ, typs, typdef) -> TyAlias (replace_tyvar assoc typ, List.map (replace_tyvar assoc) typs, typdef)
+let rec replace_tyvar map = function
+  | TyFun (atyp, rtyp)          -> TyFun (replace_tyvar map atyp, replace_tyvar map rtyp)
+  | TyVar tv                    -> begin try TypvarMap.find tv map with Not_found -> TyVar tv end
+  | TyVariant (typs, typdef)    -> TyVariant (List.map (replace_tyvar map) typs, typdef)
+  | TyAlias (typ, typs, typdef) -> TyAlias (replace_tyvar map typ, List.map (replace_tyvar map) typs, typdef)
 
 let rec map_typ tctx = function
   | Syntax.TFun (arg, ret)    -> begin
@@ -34,7 +34,10 @@ let rec map_typ tctx = function
           let typs = map_typs tctx typs in
           match typdef.td_kind with
           | TkVariant _ -> TyVariant (typs, ident)
-          | TkAlias typ -> TyAlias (replace_tyvar (List.combine typdef.td_params typs) typ, typs, ident)
+          | TkAlias typ -> begin
+              let map = init_typvarmap typdef.td_params typs in
+              TyAlias (replace_tyvar map typ, typs, ident)
+            end
         end
     end
 and map_typs tctx = List.map (map_typ tctx)
@@ -67,3 +70,28 @@ let variant_constr tctx constr_name =
       Some (typdef, constr_typ)
     end
   | Some _ -> assert false
+
+let rec local_unify acc typ1 typ2 = match typ1, typ2 with
+  | TyFun (atyp1, rtyp1), TyFun (atyp2, rtyp2) -> begin
+      match local_unify acc atyp1 atyp2 with
+        Some acc -> local_unify acc rtyp1 rtyp2
+      | None     -> None
+    end
+  | TyVar id, _ -> begin
+      if TypvarMap.mem id acc then
+        if eq_typ typ2 @< TypvarMap.find id acc then Some acc
+        else None
+      else Some (TypvarMap.add id typ2 acc)
+    end
+  | TyVariant (typs1, ident1), TyVariant (typs2, ident2) -> begin
+      if not (Ident.equal ident1 ident2) then None
+      else
+        OptionMonad.fold_left
+          (fun acc (typ1, typ2) -> local_unify acc typ1 typ2)
+          (Some acc) (List.combine typs1 typs2)
+    end
+  | TyAlias (atyp, _, _), typ | typ, TyAlias (atyp, _, _) ->
+      local_unify acc atyp typ
+  | (TyFun _|TyVariant _), _ -> None
+
+let local_unify typ1 typ2 = local_unify TypvarMap.empty typ1 typ2

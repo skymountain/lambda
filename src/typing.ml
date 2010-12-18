@@ -116,29 +116,6 @@ let rec typ_exp tctx = function
       iter tctx typ branches
     end
   | Construct (constr_name, typ) -> begin
-      let rec local_unify acc typ1 typ2 = match typ1, typ2 with
-        | TyFun (atyp1, rtyp1), TyFun (atyp2, rtyp2) -> begin
-            match local_unify acc atyp1 atyp2 with
-              Some acc -> local_unify acc rtyp1 rtyp2
-            | None     -> None
-          end
-        | TyVar id, _ -> begin
-            if TypvarMap.mem id acc then
-              if eq_typ typ2 @< TypvarMap.find id acc then Some acc
-              else None
-            else Some (TypvarMap.add id typ2 acc)
-          end
-        | TyVariant (typs1, ident1), TyVariant (typs2, ident2) -> begin
-            if not (Ident.equal ident1 ident2) then None
-            else
-              OptionMonad.fold_left
-                (fun acc (typ1, typ2) -> local_unify acc typ1 typ2)
-                (Some acc) (List.combine typs1 typs2)
-          end
-        | TyAlias (atyp, _, _), typ | typ, TyAlias (atyp, _, _) ->
-            local_unify acc atyp typ
-        | (TyFun _|TyVariant _), _ -> None
-      in
       let rec funtyp_of =
         function
           [] -> assert false
@@ -151,7 +128,7 @@ let rec typ_exp tctx = function
           let constr_typ = funtyp_of @<
             constr_typs @ [TyVariant (List.map (fun x -> TyVar x) typdef.td_params, typdef.td_id)]
           in
-          match local_unify TypvarMap.empty constr_typ typ with
+          match local_unify constr_typ typ with
           | Some _ -> typ
           | None   -> err "type of variant constructor is invalid"
         end

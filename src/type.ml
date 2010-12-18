@@ -1,3 +1,5 @@
+open Misc
+
 type typvar = int
 
 and typ =
@@ -25,6 +27,11 @@ module TypvarMap = Map.Make(struct
                               type t = typvar
                               let compare = compare
                             end)
+
+let init_typvarmap typvars typs =
+  List.fold_left
+    (fun acc (typvar, typ) -> TypvarMap.add typvar typ acc)
+    TypvarMap.empty @< List.combine typvars typs
 
 let typvar_id = ref 0
 
