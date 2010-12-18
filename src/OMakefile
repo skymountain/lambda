@@ -37,7 +37,7 @@ FILES[] =
 	type
 	monotypevarMap
 	typeContext
-	typeExp
+	typeexp
 	predefType
 	printtype
 	value

@@ -4,8 +4,7 @@ open OptionMonad
 open Common
 open Type
 open TypeContext
-open TypeDef
-open TypeExp
+open Typeexp
 open Printtype
 
 (* typing for constant *)

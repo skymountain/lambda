@@ -4,7 +4,7 @@ open Common
 open Syntax
 open Value
 open Type
-open TypeExp
+open Typeexp
 open Printtype
 
 exception Matching_error of string

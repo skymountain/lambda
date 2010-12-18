@@ -1,6 +1,5 @@
 open Type
-open TypeDef
-open TypeExp
+open Typeexp
 
 let inst typdef typs =
   if List.length typs <> typdef.td_arity then assert false

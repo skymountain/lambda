@@ -1,6 +1,5 @@
 open Misc
 open Type
-open TypeDef
 
 type context =
     {

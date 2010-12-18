@@ -35,7 +35,7 @@ let rec read_eval_print prompt fun_lexbuf tctx env err =
        Parsing.Parse_error       -> f "Syntax error"
      | Lexer.Lexical_error s     -> f s
      | Eval.Eval_error s         -> f s
-     | TypeExp.Typing_error s    -> f s
+     | Typeexp.Typing_error s    -> f s
      | Patmatch.Matching_error s -> f s
      | _ -> raise e)
 

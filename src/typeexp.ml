@@ -1,6 +1,5 @@
 open Misc
 open Type
-open TypeDef
 open TypeContext
 open MonotypevarMap
 
