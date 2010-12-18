@@ -49,7 +49,7 @@ let rec ematch v = function
     end
   | PConstr (_, _, pats) -> begin
       match v with
-      | ConstrV (_, vs) -> begin
+      | ConstrV (_, vs) when List.length pats = List.length vs -> begin
           OptionMonad.fold_left
             (fun env (v, pat) -> match ematch v pat with
              | None -> None | Some env' -> Some (Env.extend_by_env env env'))
