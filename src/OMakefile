@@ -56,4 +56,4 @@ PROGRAM = lambda
 .DEFAULT: $(OCamlProgram $(PROGRAM), $(FILES))
 
 clean:
-	rm -f *.o *.cmi *.cmx *.annot *.spot *.spit *.omc lambda lambda.opt
+	rm -f *.o *.cmi *.cmx *.annot *.spot *.spit *.omc lambda lambda.opt parser.mli parser.ml lexer.ml *~
