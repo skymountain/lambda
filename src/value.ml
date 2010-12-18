@@ -2,7 +2,7 @@ open Misc
 open Syntax
 
 type t =
-    IntV  of int
+  | IntV  of int
   | BoolV of bool
   | FunV  of id * exp * (id * t) Env.t ref
   | ListV of t list

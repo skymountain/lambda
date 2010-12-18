@@ -1,7 +1,7 @@
 open Misc
 open Type
 
-type context =
+type t =
     {
       typ_env   : (Syntax.id * typ) Env.t;
       typdef_env: (Ident.t * typdef) Env.t;
@@ -25,7 +25,7 @@ let lookup_typ tctx name = Env.fold tctx.typdef_env
   None
 let lookup_constr tctx = Env.lookup tctx.constr_env
 
-let add_typ tctx typdef ident =
+let add_typ tctx ident typdef =
   let constr_env =
     match typdef.td_kind with
       TkAlias _             -> tctx.constr_env

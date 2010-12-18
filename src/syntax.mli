@@ -1,34 +1,28 @@
-type id = string
+type id = string;;
 
 type binop =
-  | BPlus
+    BPlus
   | BMinus
   | BMult
   | BDiv
   | BLt
   | BCons
-      
-let str_of_binop = function
-  | BPlus  -> "+"
-  | BMinus -> "-"
-  | BMult  -> "*"
-  | BDiv   -> "/"
-  | BLt    -> "<"
-  | BCons  -> "::"
-      
+
+val str_of_binop : binop -> string
+
 type typ =
   | TFun  of typ * typ
   | TVar  of id
   | TName of typ list * id
 
 type const =
-  | CInt      of int
+    CInt      of int
   | CBool     of bool
   | CNullList of typ
 
 (* pattern *)
 type pat =
-  | PVar   of id
+    PVar   of id
   | PWildCard
   | PConst of const
   | PAs    of pat * id
@@ -37,7 +31,7 @@ type pat =
   | POr    of pat * pat
 
 type exp =
-  | Var     of id
+    Var     of id
   | Const   of const
   | BinOp   of binop * exp * exp
   | Fun     of id * typ * exp
@@ -51,16 +45,15 @@ type exp =
   | Construct of string * typ
 
 type eval =
-  | Exp  of exp
+    Exp  of exp
   | Decl of id * exp
   | DeclRec of id * typ * exp
 
 type typ_kind =
-  | TkAlias of typ
+    TkAlias of typ
   | TkVariant of (string * typ list) list
 
-type typdef =
-    { td_name: string; td_params: string list; td_kind: typ_kind; }
+type typdef = { td_name: string; td_params: string list; td_kind: typ_kind; }
 
 type program =
   | Eval of eval

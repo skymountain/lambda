@@ -204,7 +204,7 @@ let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Synt
       end
     | Syntax.TkVariant ((_::_) as constrs) -> begin
         let imaginary_typdef = { td_params = tvlist; td_arity = arity; td_kind = TkVariant []; td_id = ident } in
-        let tctx = add_typ tctx imaginary_typdef ident in
+        let tctx = add_typ tctx ident imaginary_typdef in
         let variant_typ = TyVariant (List.map (fun tv -> TyVar tv) tvlist, ident) in
         let _, constrs =
           List.fold_left (fun (set, constrs) (constr_name, typs) ->
@@ -224,4 +224,4 @@ let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Synt
   if typvar_num <> MonotypevarMap.cardinal () then err "there are type variables which weren't specified as parameters"
   else
     let typdef = { td_params = tvlist; td_arity = arity; td_kind = td_kind; td_id = ident } in
-    TypeContext.add_typ tctx typdef ident
+    TypeContext.add_typ tctx ident typdef

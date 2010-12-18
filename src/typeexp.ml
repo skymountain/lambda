@@ -5,7 +5,7 @@ open MonotypevarMap
 
 exception Typing_error of string
 let err s = raise (Typing_error (Printf.sprintf "Typing error: %s" s))
-  
+
 let rec replace_tyvar assoc = function
   | TyFun (atyp, rtyp)          -> TyFun (replace_tyvar assoc atyp, replace_tyvar assoc rtyp)
   | TyVar tv                    -> List.assoc tv assoc

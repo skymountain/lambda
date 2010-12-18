@@ -10,8 +10,6 @@ open Printtype
 exception Matching_error of string
 let err s = raise (Matching_error (Printf.sprintf "Matching error: %s" s))
 
-module VariableSet = Set.Make(String)
-
 let ematch_const v c =
   match (v, c) with
     IntV i, CInt i' when i = i'   -> true
