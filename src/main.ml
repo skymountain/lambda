@@ -2,6 +2,7 @@ open Misc
 open Syntax
 open Value
 open Type
+open TypeScheme
 open Printtype
 
 exception Exit

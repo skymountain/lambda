@@ -64,34 +64,10 @@ let is_disjoint_env env env' =
   let sum = VariableSet.cardinal @< VariableSet.union mem mem' in
   sum = card + card'
 
-let typs_in_tenv tenv elems =
-  List.fold_right
-    (fun elem typs -> match Env.lookup tenv elem with None -> assert false | Some typ -> (TypeScheme.typ typ)::typs)
-    elems []
-
-let unify_env subst env env' =
-  let mem, mem' = Env.members env, Env.members env' in
-  if not (VariableSet.equal mem mem') then None
-  else
-    let elems = VariableSet.elements mem in
-    let typs = typs_in_tenv env elems in
-    let typs' = typs_in_tenv env' elems in
-    Subst.unifyl subst @< List.combine typs typs'
-
 let typ_of_const tctx = function
   | CInt _      -> PredefType.int_typ
   | CBool _     -> PredefType.bool_typ
-  | CNullList t -> map_typ tctx t
-
-let rec argtyps = function
-  | TyFun (atyp, rtyp)    -> atyp::(argtyps rtyp)
-  | TyAlias (typ, _, _)   -> argtyps typ
-  | TyVar _ | TyVariant _ -> []
-
-let rec retyp typ = match typ with
-  | TyFun (_, rtyp)       -> retyp rtyp
-  | TyAlias (typ, _, _)   -> retyp typ
-  | TyVar _ | TyVariant _ -> typ
+  | CNullList _ -> snd @< PredefType.new_listyp ()
 
 let rec tmatch tctx subst typ pat : (string * TypeScheme.t) Env.t * Subst.t = match pat with
     PVar var -> (Env.extend Env.empty var @< TypeScheme.monotyp typ, subst)
@@ -122,7 +98,7 @@ let rec tmatch tctx subst typ pat : (string * TypeScheme.t) Env.t * Subst.t = ma
   | POr (lpat, rpat) -> begin
       let ltenv, subst = tmatch tctx subst typ lpat in
       let rtenv, subst = tmatch tctx subst typ rpat in
-      match unify_env subst ltenv rtenv with
+      match Subst.unify_monotyp_env subst ltenv rtenv with
       | Some subst -> (ltenv, subst)
       | None       -> err "both sieds of or-pattern must have same bindings exactly"
     end

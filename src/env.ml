@@ -1,3 +1,4 @@
+open Common
 open Misc
 open Common
 
@@ -27,13 +28,13 @@ let rec map env f =
     [] -> []
   | (k,v)::t -> (k, f v)::(map t f)
 
-let rec fold env f x = List.fold_left f x env
-
 let rec remove env x = List.remove_assoc x env
+  
+let rec fold env f x = List.fold_left f x env
 
 (* if there are same variables between env and env', the value is in env' *)
 let extend_by_env env env' =
   extendl env @< list_of env'
 
 let members env =
-  fold env (fun acc (k, _) -> VariableSet.add k acc) VariableSet.empty 
+  fold env (fun acc (x, _) -> VariableSet.add x acc) VariableSet.empty

@@ -26,6 +26,30 @@ let new_typvar typvar =
   in
   iter (String.copy typvar) (len - 1)
 
+let new_typvar typvar =
+  assert (String.length typvar > 0);
+  let len = String.length typvar in
+  let rec iter s idx =
+    match idx, s.[idx] with
+      0, 'z' -> begin
+        let len = String.length s in
+        let s' = String.create @< len + 1 in
+        String.blit s 0 s' 0 len;
+        s'.[0] <- 'a';
+        s'.[len] <- 'a';
+        s'
+      end
+    | _, 'z' -> begin
+        s.[idx] <- 'a';
+        iter s @< idx - 1
+      end
+    | _, _ -> begin
+        s.[idx] <- char_of_int @< (int_of_char s.[idx] + 1);
+        s
+      end
+  in
+  iter (String.copy typvar) (len - 1)
+
 (* pretty printer for types *)
 let pps =
   let is_funtyp_without_paren s =
@@ -73,7 +97,6 @@ let pps =
     (tvmap, typvar, List.rev typ_strs)
   in
   (fun is_bound typ -> let _, _, s = pps_inner TypvarMap.empty "a" is_bound typ in s)
-
 
 let pps_typ = pps (fun _ -> true)
 let pp_typ typ = print_string @< pps_typ typ

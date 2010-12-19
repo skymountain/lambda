@@ -31,6 +31,7 @@ FILES[] =
 	misc
 	common
 	optionMonad
+	common
 	env
 	ident
 	syntax
@@ -45,6 +46,7 @@ FILES[] =
 	value
 	parser
 	lexer
+	subst
 	patmatch
 	typing
 	eval

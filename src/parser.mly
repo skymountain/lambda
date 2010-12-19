@@ -42,7 +42,6 @@
 %left INFIXOP3
 %right INFIXOP4
 %nonassoc LIST PREFIXOP
-
 %start main
 %type<Syntax.program> main
 %%

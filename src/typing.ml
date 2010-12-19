@@ -13,16 +13,14 @@ let closure tctx subst typ =
   TypeScheme.closure typ tenv
 
 (* unification utils *)
-let unify_err s = err s
-
 let unify subst typ1 typ2 msg =
   match Subst.unify subst typ1 typ2 with
-    None       -> unify_err msg
+    None       -> err msg
   | Some subst -> subst
 
 let unifyl subst typs msg =
   match Subst.unifyl subst typs with
-    None       -> unify_err msg
+    None       -> err msg
   | Some subst -> subst
 
 (* typing for constant *)
@@ -36,8 +34,6 @@ let typ_const tctx subst = function
       (subst, Subst.subst_typ subst ltyp)
     end
 
-let return typ (tenv, subst) = (tenv, subst, Subst.subst_typ subst typ)
-      
 (* typing for binary operator *)
 let typ_binop tctx subst typ1 typ2 = function
     (BPlus | BMinus | BMult | BDiv | BLt ) -> assert false
@@ -147,10 +143,10 @@ let rec typ_exp tctx subst = function
 
 (* typing for let-rec *)
 and typ_letrec tctx subst var typ exp =
-  let typ = map_typ tctx typ in
-  let funtyp, ftyp, rtyp = new_funtyp () in
   match exp with
     Fun _ -> begin
+      let typ = map_typ tctx typ in
+      let funtyp, ftyp, rtyp = new_funtyp () in
       let subst = unify subst funtyp typ "only values which are functions can be defined recursively" in
       let tctx' = add_var tctx var @< TypeScheme.monotyp funtyp in
       let subst, etyp = typ_exp tctx' subst exp in
@@ -166,12 +162,11 @@ let typing tctx =
     let tctx = add_var tctx var typ in
     (tctx, var, typ);
   in
-  
+
   function
     Exp exp -> return tctx "it" @< typ_exp tctx Subst.empty exp
   | Decl (var, exp) -> return tctx var @< typ_exp tctx Subst.empty exp
   | DeclRec (var, typ, exp) -> return tctx var @< typ_letrec tctx Subst.empty var typ exp
-
 
 module ConstrSet = Set.Make(String)
 
