@@ -120,18 +120,14 @@ PatternExpr:
 | LSQPAREN PListExpr RSQPAREN    { $2 }
 | PatternExpr COLON2 PatternExpr { PCons ($1, $3) }
 | PatternExpr VBAR PatternExpr   { POr ($1, $3) }
-| UIDENT
-                                 { PConstr ($1, []) }
+| UIDENT                         { PConstr ($1, []) }
 | UIDENT LPAREN PatternExprList RPAREN
                                  { PConstr ($1, $3) }
 | LPAREN PatternExpr RPAREN      { $2 }
 
 PListExpr:
-  PListExpr_                     { PCons ($1, PConst (CNullList (fresh_typvar ()))) }
-| PListExpr_ SEMICOLON PListExpr { PCons ($1, $3) }
-
-PListExpr_:
-  PatternExpr { $1 }
+  PatternExpr                    { PCons ($1, PConst (CNullList (fresh_typvar ()))) }
+| PatternExpr SEMICOLON PListExpr{ PCons ($1, $3) }
 
 PatternExprList:
   PatternExpr                       { [$1] }
