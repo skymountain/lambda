@@ -20,8 +20,8 @@ let bool_typdef = { td_params = []; td_arity = 0; td_kind = TkVariant []; td_id 
 let bool_typ = inst bool_typdef []
 
 let list_ident  = Ident.create "list"
-let list_etypvar = newtypvar ()
 let list_typdef =
+  let list_etypvar = newtypvar () in
   let typvar = TyVar list_etypvar in
   { td_params   = [list_etypvar]; td_arity = 1;
     td_kind     = TkVariant [
@@ -29,11 +29,10 @@ let list_typdef =
       ("::", [typvar; TyVariant ([typvar], list_ident)])
     ];
     td_id       = list_ident; }
-let inst_list_typ etyp =
-  let map = init_typvarmap [list_etypvar] [etyp] in
-  replace_tyvar map (TyVariant ([TyVar list_etypvar], list_ident))
+let inst_list_typ = inst list_typdef
+
 let etyp_of_list typ = match variant typ with
-    Some (typ::[], _) -> Some typ
+    Some (typ::[], id) -> if Ident.equal id list_ident then Some typ else None
   | Some _            -> assert false
   | None              -> None
 
