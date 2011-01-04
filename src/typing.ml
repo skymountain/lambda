@@ -142,15 +142,23 @@ let rec typ_exp tctx = function
 
 (* typing for let-rec *)
 and typ_letrec tctx var typ exp =
+  let fun_err () =
+    err "only values which are functions can be defined recursively"
+  in
+  let rec iter typ = match typ with
+    | TyFun _ -> begin
+        let tctx = add_var tctx var typ in
+        let etyp = typ_exp tctx exp in
+        if eq_typ typ etyp then etyp
+        else err "expression's type doesn't cossrespond with the specified type"
+      end
+    | TyAlias (typ, _, _) -> iter typ
+    | _ -> fun_err ()
+  in
   let typ = map_typ tctx typ in
-  match exp, typ with
-    Fun _, TyFun _ -> begin
-      let tctx = add_var tctx var typ in
-      let etyp = typ_exp tctx exp in
-      if eq_typ typ etyp then etyp
-      else err "expression's type doesn't cossrespond with the specified type"
-    end
-  | _ -> err "only values which are functions can be defined recursively"
+  match exp with
+  | Fun _ -> iter typ
+  | _ -> fun_err ()
 
 (* typing for program *)
 let typing tctx =
