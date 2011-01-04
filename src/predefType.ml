@@ -26,10 +26,10 @@ let list_typdef =
   { td_params   = [list_etypvar]; td_arity = 1;
     td_kind     = TkVariant [
       ("[]", []);
-      ("::", [typvar; TyVariant ([typvar], list_ident)])
+      ("::", [typvar])
     ];
     td_id       = list_ident; }
-let inst_list_typ = inst list_typdef
+let inst_list_typ etyp = inst list_typdef [etyp]
 
 let etyp_of_list typ = match variant typ with
     Some (typ::[], id) -> if Ident.equal id list_ident then Some typ else None
