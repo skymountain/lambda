@@ -13,7 +13,12 @@ let typ_const tctx = function
   | CBool _       -> PredefType.bool_typ
   | CNullList typ -> begin
       match typ with
-        TName _ -> map_typ tctx typ
+        TName _ -> begin
+          let typ = map_typ tctx typ in
+          match PredefType.etyp_of_list typ with
+          | Some _ -> typ
+          | _      -> err "specified type isn't list type"
+        end
       | _       -> err "specified type isn't list type"
     end
 
