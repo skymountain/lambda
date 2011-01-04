@@ -101,24 +101,24 @@ let rec typ_exp tctx = function
     end
 
   | MatchExp (exp, branches) -> begin
-      let typ = typ_exp tctx exp in
-      let rec iter tctx cond_typ = function
+      let cond_typ = typ_exp tctx exp in
+      let rec iter = function
           [(pat, body)] -> begin
             let tenv = Patmatch.tmatch tctx cond_typ pat in
-            let tctx = extend_typ_env tctx tenv in
-            typ_exp tctx  body
+            let extended_tctx = extend_typ_env tctx tenv in
+            typ_exp extended_tctx  body
           end
         | (pat, body)::t -> begin
             let extended_tctx = extend_typ_env tctx @< Patmatch.tmatch tctx cond_typ pat in
             let btyp = typ_exp extended_tctx body in
-            let btyp' = iter tctx cond_typ t in
+            let btyp' = iter t in
             if eq_typ btyp btyp' then btyp
             else err @< Printf.sprintf "%s doesn't match with %s: all branch expresions must be same types"
               (pps_typ btyp) (pps_typ btyp')
           end
         | _ -> assert false
       in
-      iter tctx typ branches
+      iter branches
     end
   | Construct (constr_name, typ) -> begin
       let rec funtyp_of =
