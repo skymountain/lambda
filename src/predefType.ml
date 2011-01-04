@@ -32,8 +32,7 @@ let list_typdef =
 let inst_list_typ etyp = inst list_typdef [etyp]
 
 let etyp_of_list typ = match variant typ with
-    Some (typ::[], id) -> if Ident.equal id list_ident then Some typ else None
-  | Some _            -> assert false
-  | None              -> None
+  | Some (typ::[], id) when Ident.equal id list_ident -> Some typ
+  | _ -> None
 
 let predef_env = Env.extendl Env.empty [(int_ident, int_typdef); (bool_ident, bool_typdef); (list_ident, list_typdef)]
