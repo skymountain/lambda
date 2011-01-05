@@ -1,5 +1,29 @@
 %{
   open Syntax
+
+  let rec mk_fun bounds exp = match bounds with
+    | [] -> exp
+    | (var, typ)::bounds -> Fun (var, typ, mk_fun bounds exp)
+
+  let mk_let ident bounds typ exp body =
+    let t = Let (ident, mk_fun bounds exp, body) in
+    match typ with
+    | Some typ -> TypedExpr (t, typ)
+    | None     -> t
+
+  let mk_letdecl ident bounds typ exp =
+    let t = mk_fun bounds exp in
+    let t = match typ with
+    | Some typ -> TypedExpr (t, typ)
+    | None     -> t
+    in
+    Decl (ident, t)
+
+  let mk_reclet ident bounds typ exp body =
+    LetRec (ident, typ, mk_fun bounds exp, body)
+
+  let mk_recletdecl ident bounds typ exp =
+    DeclRec (ident, typ, mk_fun bounds exp)
 %}
 
 %token BACKSLA DOT SEMICOLON2
@@ -52,20 +76,23 @@ main:
 | EOF                { Syntax.EOF }
 
 Eval:
-  Expr                                 { Exp $1 }
-| LET Ident EQ Expr                    { Decl ($2, $4) }
-| LET REC Ident COLON TypeExpr EQ Expr { DeclRec ($3, $5, $7) }
+  Expr                                         { Exp $1 }
+| LET Ident BoundVarList WithType EQ Expr    { mk_letdecl $2 $3 $4 $6 }
+| LET REC Ident BoundVarList COLON TypeExpr EQ Expr
+                                               { mk_recletdecl $3 $4 $6 $8 }
 
 Expr:
   SExpr { $1 }
 | AppExpr SExpr { App ($1, $2) }
       
-| BACKSLA Ident COLON TypeExpr DOT Expr        { Fun ($2, $4, $6) }
-| LET Ident EQ Expr IN Expr                    { Let ($2, $4, $6) }
-| LET REC Ident COLON TypeExpr EQ Expr IN Expr { LetRec ($3, $5, $7, $9) }
+| BACKSLA BoundVarListMore DOT Expr          { mk_fun $2 $4 }
+| LET Ident BoundVarList WithType EQ Expr IN Expr
+                                               { mk_let $2 $3 $4 $6 $8 }
+| LET REC Ident BoundVarList COLON TypeExpr EQ Expr IN Expr
+                                               { mk_reclet $3 $4 $6 $8 $10 }
 | IF Expr THEN Expr ELSE Expr                  { IfExp ($2, $4, $6) }
 | MATCH Expr WITH MatchExpr                    { MatchExp ($2, $4) }
-      
+
 | Expr INFIXOP0 Expr { App (App (Var $2, $1), $3) }
 | Expr INFIXOP1 Expr { App (App (Var $2, $1), $3) }
 | Expr INFIXOP2 Expr { App (App (Var $2, $1), $3) }
@@ -147,6 +174,23 @@ Operator:
 | INFIXOP4 { $1 }
 | EQ       { "=" }
 
+BoundVarList:
+|                      { [] }
+| BoundVarListMore   { $1 }
+
+BoundVarListMore:
+| Ident COLON TypeExpr { [$1, $3] }
+| BoundVarParenList  { $1 }
+
+BoundVarParenList:
+| LPAREN Ident COLON TypeExpr RPAREN { [$2, $4] }
+| LPAREN Ident COLON TypeExpr RPAREN BoundVarParenList
+                                     { ($2, $4)::$6 }
+
+WithType:
+|                { None }
+| COLON TypeExpr { Some $2 }
+
 TypeDef:
   TYPE TypeParams LIDENT EQ TypeDefinition { { td_name = $3; td_params = $2; td_kind = $5 } }
 
@@ -173,7 +217,6 @@ VariantDefinitionList:
 VariantDefinition:
   UIDENT                 { ($1, []) }
 | UIDENT OF TypeExprList { ($1, $3) }
-
 
 TypeExpr:
   TypeExpr RARROW TypeExpr            { TFun ($1, $3) }
