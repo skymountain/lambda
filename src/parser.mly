@@ -1,23 +1,19 @@
 %{
   open Syntax
 
+  let typed_exp exp = function
+    | Some typ -> TypedExpr (exp, typ)
+    | None     -> exp
+
   let rec mk_fun bounds exp = match bounds with
     | [] -> exp
     | (var, typ)::bounds -> Fun (var, typ, mk_fun bounds exp)
 
   let mk_let ident bounds typ exp body =
-    let t = Let (ident, mk_fun bounds exp, body) in
-    match typ with
-    | Some typ -> TypedExpr (t, typ)
-    | None     -> t
+    Let (ident, mk_fun bounds (typed_exp exp typ), body)
 
   let mk_letdecl ident bounds typ exp =
-    let t = mk_fun bounds exp in
-    let t = match typ with
-    | Some typ -> TypedExpr (t, typ)
-    | None     -> t
-    in
-    Decl (ident, t)
+    Decl (ident, mk_fun bounds (typed_exp exp typ))
 
   let mk_reclet ident bounds typ exp body =
     LetRec (ident, typ, mk_fun bounds exp, body)
@@ -77,14 +73,14 @@ main:
 
 Eval:
   Expr                                         { Exp $1 }
-| LET Ident BoundVarList WithType EQ Expr    { mk_letdecl $2 $3 $4 $6 }
+| LET Ident BoundVarList WithType EQ Expr      { mk_letdecl $2 $3 $4 $6 }
 | LET REC Ident BoundVarList COLON TypeExpr EQ Expr
                                                { mk_recletdecl $3 $4 $6 $8 }
 
 Expr:
 | AppExpr { $1 }
       
-| BACKSLA BoundVarListMore DOT Expr          { mk_fun $2 $4 }
+| BACKSLA BoundVarListMore DOT Expr            { mk_fun $2 $4 }
 | LET Ident BoundVarList WithType EQ Expr IN Expr
                                                { mk_let $2 $3 $4 $6 $8 }
 | LET REC Ident BoundVarList COLON TypeExpr EQ Expr IN Expr
@@ -175,11 +171,11 @@ Operator:
 
 BoundVarList:
 |                      { [] }
-| BoundVarListMore   { $1 }
+| BoundVarListMore     { $1 }
 
 BoundVarListMore:
 | Ident COLON TypeExpr { [$1, $3] }
-| BoundVarParenList  { $1 }
+| BoundVarParenList    { $1 }
 
 BoundVarParenList:
 | LPAREN Ident COLON TypeExpr RPAREN { [$2, $4] }
