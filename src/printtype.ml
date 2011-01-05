@@ -1,4 +1,5 @@
 open Misc
+open Typevar
 open Type
 open Common
 

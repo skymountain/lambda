@@ -3,6 +3,7 @@ open Misc
 open Common
 open Syntax
 open Value
+open Typevar
 open Type
 open Typeexp
 open Printtype

@@ -33,6 +33,7 @@ FILES[] =
 	optionMonad
 	env
 	ident
+	typevar
 	syntax
 	type
 	monotypevarMap

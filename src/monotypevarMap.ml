@@ -1,10 +1,10 @@
-open Type
+open Typevar
 
 module M = Map.Make(String)
 
-type t = typvar M.t
+type t = Typevar.t M.t
 
-let map = ref (M.empty : typvar M.t)
+let map = ref (M.empty : Typevar.t M.t)
 
 let add s =
   if not (M.mem s !map) then map := M.add s (newtypvar ()) !map
