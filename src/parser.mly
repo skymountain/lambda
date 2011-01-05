@@ -82,8 +82,7 @@ Eval:
                                                { mk_recletdecl $3 $4 $6 $8 }
 
 Expr:
-  SExpr { $1 }
-| AppExpr SExpr { App ($1, $2) }
+| AppExpr { $1 }
       
 | BACKSLA BoundVarListMore DOT Expr          { mk_fun $2 $4 }
 | LET Ident BoundVarList WithType EQ Expr IN Expr
