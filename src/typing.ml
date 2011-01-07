@@ -166,6 +166,7 @@ let typing tctx =
     let tctx = add_var tctx var typ in
     (tctx, var, typ);
   in
+  MonotypevarMap.refresh ();
   function
     Exp exp -> return tctx "it" @< typ_exp tctx exp
   | Decl (var, exp) -> return tctx var @< typ_exp tctx exp
