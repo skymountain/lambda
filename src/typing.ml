@@ -182,8 +182,7 @@ let define_typ tctx { Syntax.td_name = typ_name; Syntax.td_params = params; Synt
        if MonotypevarMap.mem param then
          err "you must specify different parameters as type variables"
        else
-         MonotypevarMap.add param;
-         match MonotypevarMap.find param with Some tv -> tv | _ -> assert false)
+         MonotypevarMap.add param)
     params
   in
   let arity = List.length params in

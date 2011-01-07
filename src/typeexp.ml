@@ -20,10 +20,7 @@ let rec map_typ tctx = function
       TyFun (arg, ret)
     end
   | Syntax.TVar typvar        -> begin
-      MonotypevarMap.add typvar;
-      match MonotypevarMap.find typvar with
-        None -> assert false
-      | Some id -> TyVar id
+      TyVar (MonotypevarMap.add typvar)
     end
   | Syntax.TName (typs, name) -> begin
       match TypeContext.lookup_typ tctx name with
