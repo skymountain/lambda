@@ -148,28 +148,19 @@ and typ_letrec tctx var typ exp =
   let fun_err () =
     err "only values which are functions can be defined recursively"
   in
-  let rec iter_typ typ = match typ with
+  let rec iter typ = match typ with
     | TyFun _ -> begin
         let tctx = add_var tctx var typ in
         let etyp = typ_exp tctx exp in
         if eq_typ typ etyp then etyp
         else err_explicit_typed ()
       end
-    | TyAlias (typ, _, _) -> iter_typ typ
+    | TyAlias (typ, _, _) -> iter typ
     | _ -> fun_err ()
   in
-  let rec iter_exp typ = function
-    | Fun _ -> iter_typ typ
-    | TypedExpr (exp, typ') -> begin
-        let typ = iter_exp typ exp in
-        let typ' = map_typ tctx typ' in
-        if eq_typ typ typ' then typ'
-        else err_explicit_typed ()
-      end
-    | _ -> fun_err ()
-  in
-  let typ = map_typ tctx typ in
-  iter_exp typ exp
+  match exp with
+  | Fun _ -> iter @< map_typ tctx typ
+  | _ -> fun_err ()
 
 (* typing for program *)
 let typing tctx =

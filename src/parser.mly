@@ -20,10 +20,10 @@
     Decl (ident, mk_fun bounds etyp exp)
 
   let mk_reclet ident bounds etyp exp body =
-    LetRec (ident, mk_funtyp bounds etyp, mk_fun bounds (Some etyp) exp, body)
+    LetRec (ident, mk_funtyp bounds etyp, mk_fun bounds None exp, body)
 
   let mk_recletdecl ident bounds etyp exp =
-    DeclRec (ident, mk_funtyp bounds etyp, mk_fun bounds (Some etyp) exp)
+    DeclRec (ident, mk_funtyp bounds etyp, mk_fun bounds None exp)
 %}
 
 %token BACKSLA DOT SEMICOLON2
