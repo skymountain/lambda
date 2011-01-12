@@ -178,12 +178,8 @@ BoundVarList:
 | BoundVarListMore     { $1 }
 
 BoundVarListMore:
-| Ident COLON TypeExpr { [$1, $3] }
-| BoundVarParenList    { $1 }
-
-BoundVarParenList:
 | LPAREN Ident COLON TypeExpr RPAREN { [$2, $4] }
-| LPAREN Ident COLON TypeExpr RPAREN BoundVarParenList
+| LPAREN Ident COLON TypeExpr RPAREN BoundVarListMore
                                      { ($2, $4)::$6 }
 
 WithType:
