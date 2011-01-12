@@ -5,21 +5,25 @@
     | Some typ -> TypedExpr (exp, typ)
     | None     -> exp
 
-  let rec mk_fun bounds exp = match bounds with
-    | [] -> exp
-    | (var, typ)::bounds -> Fun (var, typ, mk_fun bounds exp)
+  let rec mk_fun bounds etyp exp = match bounds with
+    | [] -> typed_exp exp etyp
+    | (var, typ)::xs -> Fun (var, typ, mk_fun xs etyp exp)
 
-  let mk_let ident bounds typ exp body =
-    Let (ident, mk_fun bounds (typed_exp exp typ), body)
+  let rec mk_funtyp args rtyp = match args with
+    | (_, typ)::xs -> TFun (typ, mk_funtyp xs rtyp)
+    | _            -> rtyp
 
-  let mk_letdecl ident bounds typ exp =
-    Decl (ident, mk_fun bounds (typed_exp exp typ))
+  let mk_let ident bounds etyp exp body =
+    Let (ident, mk_fun bounds etyp exp, body)
 
-  let mk_reclet ident bounds typ exp body =
-    LetRec (ident, typ, mk_fun bounds exp, body)
+  let mk_letdecl ident bounds etyp exp =
+    Decl (ident, mk_fun bounds etyp exp)
 
-  let mk_recletdecl ident bounds typ exp =
-    DeclRec (ident, typ, mk_fun bounds exp)
+  let mk_reclet ident bounds etyp exp body =
+    LetRec (ident, mk_funtyp bounds etyp, mk_fun bounds (Some etyp) exp, body)
+
+  let mk_recletdecl ident bounds etyp exp =
+    DeclRec (ident, mk_funtyp bounds etyp, mk_fun bounds (Some etyp) exp)
 %}
 
 %token BACKSLA DOT SEMICOLON2
@@ -80,7 +84,7 @@ Eval:
 Expr:
 | AppExpr { $1 }
       
-| BACKSLA BoundVarListMore DOT Expr            { mk_fun $2 $4 }
+| BACKSLA BoundVarListMore DOT Expr            { mk_fun $2 None $4 }
 | LET Ident BoundVarList WithType EQ Expr IN Expr
                                                { mk_let $2 $3 $4 $6 $8 }
 | LET REC Ident BoundVarList COLON TypeExpr EQ Expr IN Expr
