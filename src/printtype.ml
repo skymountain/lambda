@@ -28,23 +28,23 @@ let new_typvar typvar =
   iter (String.copy typvar) (len - 1)
 
 (* pretty printer for types *)
+let is_funtyp_without_paren s =
+  let len = String.length s in
+  let rec iter idx depth =
+    if idx >= len then false
+    else match s.[idx] with
+      '(' -> iter (idx+1) (depth+1)
+    | ')' -> iter (idx+1) (depth-1)
+    | '-' when idx+1 < len && s.[idx+1] = '>'-> true
+    | _   -> iter (idx+1) depth
+  in
+  iter 0 0
+
+let pps_typvar typvar_map typvar id =
+  try (typvar_map, typvar, TypvarMap.find id typvar_map) with
+    Not_found -> (TypvarMap.add id typvar typvar_map, new_typvar typvar, typvar)
+
 let pps =
-  let is_funtyp_without_paren s =
-    let len = String.length s in
-    let rec iter idx depth =
-      if idx >= len then false
-      else match s.[idx] with
-        '(' -> iter (idx+1) (depth+1)
-      | ')' -> iter (idx+1) (depth-1)
-      | '-' when idx+1 < len && s.[idx+1] = '>'-> true
-      | _   -> iter (idx+1) depth
-    in
-    iter 0 0
-  in
-  let pps_typvar typvar_map typvar id =
-    try (typvar_map, typvar, TypvarMap.find id typvar_map) with
-      Not_found -> (TypvarMap.add id typvar typvar_map, new_typvar typvar, typvar)
-  in
   let rec pps_inner tvmap typvar is_bound = function
     | TyFun (typ1, typ2) -> begin
         let tvmap, typvar, t1 = pps_inner tvmap typvar is_bound typ1 in
