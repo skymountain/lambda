@@ -59,6 +59,9 @@ let pps_template template fs tvmap typvar is_bound with_paren =
                ret := !ret ^ (String.sub template !pre (pos - !pre)) ^ to_str;
                pre := pos + 2)
     xs;
+  let len = String.length template - !pre in
+  if len > 0 then 
+    ret := !ret ^ (String.sub template !pre len);
   (tvmap, typvar, with_paren, !ret)
 
 let pps =
